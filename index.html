@@ -2628,9 +2628,7 @@
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${key}`,
-                            'Content-Type': 'application/json',
-                            'HTTP-Referer': window.location.href,
-                            'X-Title': 'Nexus Chat'
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
                             model: settings.model,
