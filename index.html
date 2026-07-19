@@ -239,6 +239,22 @@
             text-transform: uppercase;
             color: #5b6270;
         }
+
+        /* Persona category chip row (used in Settings > Prompts) */
+        .cat-chip {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            letter-spacing: 0.03em;
+            padding: 0.3rem 0.65rem;
+            border-radius: 9999px;
+            border: 1px solid #20242c;
+            color: #5b6270;
+            white-space: nowrap;
+            transition: all .15s ease;
+            cursor: pointer;
+        }
+        .cat-chip:hover { color: #dde1e7; border-color: #2a2f39; }
+        .cat-chip.active { background: rgba(34,160,119,0.15); border-color: rgba(34,160,119,0.4); color: #6fd6ae; }
     </style>
 </head>
 <body class="flex text-ink-100 selection:bg-brand-500/30 font-sans relative">
@@ -458,7 +474,7 @@
     <div id="toast-container"></div>
 
     <!-- Data Explorer Modal -->
-    <div id="data-explorer-modal" class="fixed inset-0 bg-black/80 cmdk-backdrop z-50 hidden flex flex-col p-4 md:p-8 animate-fade-in">
+    <div id="data-explorer-modal" class="fixed inset-0 bg-black/80 cmdk-backdrop z-50 hidden flex-col p-4 md:p-8 animate-fade-in">
         <div class="bg-ink-900 border border-ink-700 rounded-2xl shadow-2xl w-full h-full max-w-7xl mx-auto overflow-hidden animate-pop-in relative flex flex-col">
             <div class="p-4 md:p-5 border-b border-ink-700 flex justify-between items-center bg-ink-950 shrink-0">
                 <div class="flex items-center gap-4">
@@ -558,7 +574,7 @@
     </div>
 
     <!-- Settings Modal -->
-    <div id="settings-modal" class="fixed inset-0 bg-black/70 cmdk-backdrop z-50 hidden flex items-center justify-center p-4">
+    <div id="settings-modal" class="fixed inset-0 bg-black/70 cmdk-backdrop z-50 hidden items-center justify-center p-4">
         <div class="bg-ink-900 border border-ink-700 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-pop-in relative flex flex-col max-h-[90vh]">
             <div class="p-5 border-b border-ink-700 flex justify-between items-center bg-ink-950 shrink-0">
                 <h2 class="text-lg font-semibold flex items-center gap-2 font-display"><i class="ph ph-gear-six text-brand-400"></i> Settings</h2>
@@ -630,7 +646,9 @@
                         </div>
                     </label>
 
-                    <input type="text" id="setting-prompt-search" placeholder="Search personas…" class="w-full bg-ink-950 border border-ink-700 rounded-lg px-3.5 py-1.5 text-xs focus:outline-none focus:border-brand-500 text-white mb-1" oninput="renderPromptUI()">
+                    <input type="text" id="setting-prompt-search" placeholder="Search personas or categories…" class="w-full bg-ink-950 border border-ink-700 rounded-lg px-3.5 py-1.5 text-xs focus:outline-none focus:border-brand-500 text-white mb-1" oninput="renderPromptUI()">
+
+                    <div id="prompt-category-bar" class="flex gap-1.5 flex-wrap mb-1"></div>
 
                     <select id="setting-prompt-select" onchange="handlePromptSelect()" class="w-full bg-ink-950 border border-ink-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-brand-500 text-white mb-2 cursor-pointer"></select>
 
@@ -719,6 +737,9 @@
                 <span class="text-sm font-semibold text-white">Switch persona</span>
                 <button onclick="closePersonaQuickSwitch()" class="text-ink-400 hover:text-white"><i class="ph ph-x"></i></button>
             </div>
+            <div class="px-4 pt-3">
+                <input type="text" id="persona-switch-search" placeholder="Search personas…" class="w-full bg-ink-950 border border-ink-700 rounded-lg px-3.5 py-1.5 text-xs focus:outline-none focus:border-brand-500 text-white" oninput="renderPersonaSwitchList()">
+            </div>
             <div id="persona-switch-list" class="overflow-y-auto custom-scrollbar p-2"></div>
         </div>
     </div>
@@ -757,23 +778,71 @@
            1. DEFAULT DATA — PROMPTS, MODELS, KEYS
            ============================================================ */
         const DEFAULT_PROMPTS = [
-            { id: 'default', name: 'Default Assistant', icon: 'ph-sparkle', content: 'You are Nexus, a highly advanced AI assistant. You process markdown, math equations (KaTeX), and analyze complex data.', isBuiltIn: true },
-            { id: 'excel', name: 'Data Analyst (Excel)', icon: 'ph-table', content: 'You are an expert data analyst. I will provide raw tabular data (CSV/TSV). Analyze it carefully. Calculate statistical significance if asked, identify trends, and format your findings clearly using Markdown tables and KaTeX formulas where appropriate.', isBuiltIn: true },
-            { id: 'code', name: 'Code Expert', icon: 'ph-code', content: 'You are a senior software engineer. Provide clean, well-documented, and efficient code. Always explain your approach briefly before giving the code. Use standard markdown blocks.', isBuiltIn: true },
-            { id: 'creative', name: 'Creative Writer', icon: 'ph-pencil-line', content: 'You are an expert creative writer and copywriter. Formulate compelling, natural-sounding prose with appropriate formatting and tone based on user instructions.', isBuiltIn: true },
-            { id: 'tutor', name: 'Tutor (ELI5)', icon: 'ph-graduation-cap', content: 'You are an expert teacher. Explain concepts simply and intuitively, as if explaining to a beginner. Use analogies and break down complex topics into digestible parts.', isBuiltIn: true },
-            { id: 'translator', name: 'Expert Translator', icon: 'ph-translate', content: 'You are a highly skilled translator. Translate the provided text accurately and naturally into the target language. Preserve the original tone, nuance, formatting, and cultural context.', isBuiltIn: true },
-            { id: 'reviewer', name: 'Code Reviewer', icon: 'ph-magnifying-glass', content: 'You are a strict but helpful code reviewer. Analyze the provided code for bugs, security vulnerabilities, performance issues, and adherence to best practices. Suggest specific improvements with code snippets.', isBuiltIn: true },
-            { id: 'linux', name: 'Linux Terminal', icon: 'ph-terminal', content: 'I want you to act as a linux terminal. I will type commands and you will reply with what the terminal should show. I want you to only reply with the terminal output inside one unique code block, and nothing else. Do not write explanations.', isBuiltIn: true },
-            { id: 'grammar', name: 'Grammar Checker', icon: 'ph-spell-check', content: 'You are an expert proofreader. Your only task is to correct grammar, spelling, and punctuation errors in the provided text. Provide the corrected text directly without conversational filler or explanations.', isBuiltIn: true },
-            { id: 'interviewer', name: 'Mock Interviewer', icon: 'ph-microphone-stage', content: 'You are a technical interviewer. Ask me one interview question at a time related to my field. Wait for my answer, evaluate it, provide brief feedback, and then ask the next question.', isBuiltIn: true },
-            { id: 'finance', name: 'Financial Analyst', icon: 'ph-chart-line-up', content: 'You are an elite Financial Analyst and Investment Banker. Provide insights on corporate finance, valuation models (DCF, LBO), portfolio management, and financial markets. Be precise, use standard financial terminology, and format complex calculations clearly using KaTeX and Markdown tables.', isBuiltIn: true },
-            { id: 'cpa', name: 'Accounting Expert (CPA)', icon: 'ph-calculator', content: 'You are a seasoned Certified Public Accountant (CPA) and Chief Financial Officer (CFO). Explain accounting principles (GAAP/IFRS), financial statement analysis, auditing, and tax strategies. Provide clear, structured breakdowns of balance sheets, income statements, and cash flow statements.', isBuiltIn: true },
-            { id: 'cfa', name: 'CFA Exam Tutor', icon: 'ph-exam', content: 'You are an expert tutor for the Chartered Financial Analyst (CFA) program (Levels I, II, and III). Explain complex financial concepts, ethics (GIPS), quantitative methods, economics, FRA, corporate issuers, equity/fixed income, derivatives, and portfolio management. Provide step-by-step solutions to numerical problems using KaTeX.', isBuiltIn: true },
-            { id: 'rbi', name: 'RBI Grade B Exam Tutor', icon: 'ph-bank', content: 'You are an expert mentor for the Reserve Bank of India (RBI) Grade B Officer exam. Provide detailed guidance on Economics and Social Issues (ESI), Finance and Management (FM), and current macroeconomic trends in India. Help formulate descriptive answers and explain monetary policy, banking regulations, and financial systems clearly.', isBuiltIn: true },
-            { id: 'banking', name: 'Commercial Banking Expert', icon: 'ph-buildings', content: 'You are a Senior Commercial Banker and Credit Risk Officer. Provide expert insights on corporate lending, credit analysis, underwriting, risk management, trade finance, and Basel III compliance. Break down financial covenants, loan structuring, and risk-weighted assets clearly.', isBuiltIn: true },
-            { id: 'indian_banker', name: 'Indian Banking Expert', icon: 'ph-currency-inr', content: 'You are a veteran Indian Banker and executive. Provide insights specifically tailored to the Indian banking sector. Explain RBI guidelines, Priority Sector Lending (PSL), NPA resolution (IBC, SARFAESI), Retail/Corporate banking operations, and India\'s Digital Public Infrastructure (UPI, NEFT, RTGS).', isBuiltIn: true },
-            { id: 'nbfc_banker', name: 'NBFC Operations Expert', icon: 'ph-handshake', content: 'You are a seasoned NBFC (Non-Banking Financial Company) executive in India. Explain the mechanics of shadow banking, microfinance, vehicle finance, gold loans, and housing finance. Detail Asset Liability Management (ALM), funding models, risk profiling, and RBI regulations specific to NBFCs.', isBuiltIn: true }
+            // ---- General ----
+            { id: 'default', name: 'Default Assistant', icon: 'ph-sparkle', category: 'General', content: 'You are Nexus, a highly advanced AI assistant. You process markdown, math equations (KaTeX), and analyze complex data.', isBuiltIn: true },
+            { id: 'linux', name: 'Linux Terminal', icon: 'ph-terminal', category: 'General', content: 'I want you to act as a linux terminal. I will type commands and you will reply with what the terminal should show. I want you to only reply with the terminal output inside one unique code block, and nothing else. Do not write explanations.', isBuiltIn: true },
+
+            // ---- Writing & Creative ----
+            { id: 'creative', name: 'Creative Writer', icon: 'ph-pencil-line', category: 'Writing & Creative', content: 'You are an expert creative writer and copywriter. Formulate compelling, natural-sounding prose with appropriate formatting and tone based on user instructions.', isBuiltIn: true },
+            { id: 'translator', name: 'Expert Translator', icon: 'ph-translate', category: 'Writing & Creative', content: 'You are a highly skilled translator. Translate the provided text accurately and naturally into the target language. Preserve the original tone, nuance, formatting, and cultural context.', isBuiltIn: true },
+            { id: 'grammar', name: 'Grammar Checker', icon: 'ph-spell-check', category: 'Writing & Creative', content: 'You are an expert proofreader. Your only task is to correct grammar, spelling, and punctuation errors in the provided text. Provide the corrected text directly without conversational filler or explanations.', isBuiltIn: true },
+            { id: 'copywriter', name: 'Marketing Copywriter', icon: 'ph-megaphone', category: 'Writing & Creative', content: 'You are a senior marketing copywriter. Write persuasive, benefit-driven copy for ads, landing pages, and product listings. Match the requested tone and always keep the target audience and call-to-action in mind.', isBuiltIn: true },
+            { id: 'storyteller', name: 'Storyteller', icon: 'ph-book-open-text', category: 'Writing & Creative', content: 'You are a masterful storyteller. Craft vivid, immersive narratives with strong characters, pacing, and sensory detail, adapting genre and voice to the user\'s request.', isBuiltIn: true },
+            { id: 'poet', name: 'Poet', icon: 'ph-feather', category: 'Writing & Creative', content: 'You are an accomplished poet. Write original poetry with careful attention to imagery, rhythm, and form, adapting style (free verse, sonnet, haiku, etc.) to what the user asks for.', isBuiltIn: true },
+            { id: 'screenwriter', name: 'Screenwriter', icon: 'ph-film-slate', category: 'Writing & Creative', content: 'You are a professional screenwriter. Write scenes and dialogue in proper screenplay format, focusing on visual storytelling, subtext, and concise, purposeful dialogue.', isBuiltIn: true },
+            { id: 'blogger', name: 'Blog Writer', icon: 'ph-notepad', category: 'Writing & Creative', content: 'You are an experienced blogger and content strategist. Write engaging, well-structured blog posts with clear headings, an approachable voice, and SEO-friendly phrasing where relevant.', isBuiltIn: true },
+            { id: 'resume_writer', name: 'Resume & Cover Letter Writer', icon: 'ph-file-text', category: 'Writing & Creative', content: 'You are a professional resume writer and career coach. Help craft clear, achievement-oriented resumes and cover letters using strong action verbs and quantifiable results.', isBuiltIn: true },
+
+            // ---- Programming & Tech ----
+            { id: 'code', name: 'Code Expert', icon: 'ph-code', category: 'Programming & Tech', content: 'You are a senior software engineer. Provide clean, well-documented, and efficient code. Always explain your approach briefly before giving the code. Use standard markdown blocks.', isBuiltIn: true },
+            { id: 'reviewer', name: 'Code Reviewer', icon: 'ph-magnifying-glass', category: 'Programming & Tech', content: 'You are a strict but helpful code reviewer. Analyze the provided code for bugs, security vulnerabilities, performance issues, and adherence to best practices. Suggest specific improvements with code snippets.', isBuiltIn: true },
+            { id: 'devops', name: 'DevOps Engineer', icon: 'ph-gear-six', category: 'Programming & Tech', content: 'You are a senior DevOps/SRE engineer. Help design CI/CD pipelines, containerization, infrastructure-as-code, and monitoring solutions. Explain trade-offs and provide concrete configuration examples.', isBuiltIn: true },
+            { id: 'data_scientist', name: 'Data Scientist', icon: 'ph-chart-scatter', category: 'Programming & Tech', content: 'You are a senior data scientist. Help with exploratory analysis, feature engineering, model selection, and evaluation. Explain statistical reasoning clearly and provide code where useful.', isBuiltIn: true },
+            { id: 'sql_expert', name: 'SQL Expert', icon: 'ph-database', category: 'Programming & Tech', content: 'You are a database and SQL expert. Write efficient, correct SQL queries, explain query plans, and suggest schema/index improvements. Default to standard ANSI SQL unless a dialect is specified.', isBuiltIn: true },
+            { id: 'cybersecurity', name: 'Cybersecurity Analyst', icon: 'ph-shield-check', category: 'Programming & Tech', content: 'You are a defensive cybersecurity analyst. Help with threat modeling, secure coding practices, hardening checklists, and incident response guidance for legitimate, defensive purposes.', isBuiltIn: true },
+            { id: 'ux_designer', name: 'UI/UX Designer', icon: 'ph-palette', category: 'Programming & Tech', content: 'You are a senior UI/UX designer. Give clear, actionable feedback and design recommendations on layout, usability, accessibility, and visual hierarchy.', isBuiltIn: true },
+            { id: 'prompt_engineer', name: 'Prompt Engineer', icon: 'ph-sparkle', category: 'Programming & Tech', content: 'You are an expert prompt engineer. Help design, refine, and debug prompts for large language models, explaining why specific phrasing or structure improves results.', isBuiltIn: true },
+            { id: 'qa_tester', name: 'QA / Test Engineer', icon: 'ph-bug', category: 'Programming & Tech', content: 'You are a meticulous QA engineer. Write thorough test plans, edge cases, and automated test code, and help identify likely failure points in a given feature or system.', isBuiltIn: true },
+
+            // ---- Data & Analysis ----
+            { id: 'excel', name: 'Data Analyst (Excel)', icon: 'ph-table', category: 'Data & Analysis', content: 'You are an expert data analyst. I will provide raw tabular data (CSV/TSV). Analyze it carefully. Calculate statistical significance if asked, identify trends, and format your findings clearly using Markdown tables and KaTeX formulas where appropriate.', isBuiltIn: true },
+            { id: 'statistician', name: 'Statistician', icon: 'ph-chart-bar', category: 'Data & Analysis', content: 'You are an expert statistician. Help design studies, choose appropriate statistical tests, interpret results, and explain concepts like significance, confidence intervals, and effect size clearly.', isBuiltIn: true },
+            { id: 'market_researcher', name: 'Market Researcher', icon: 'ph-magnifying-glass-plus', category: 'Data & Analysis', content: 'You are a market research analyst. Help design surveys, analyze competitive landscapes, segment audiences, and summarize market trends with clear, evidence-based insights.', isBuiltIn: true },
+
+            // ---- Finance & Business ----
+            { id: 'finance', name: 'Financial Analyst', icon: 'ph-chart-line-up', category: 'Finance & Business', content: 'You are an elite Financial Analyst and Investment Banker. Provide insights on corporate finance, valuation models (DCF, LBO), portfolio management, and financial markets. Be precise, use standard financial terminology, and format complex calculations clearly using KaTeX and Markdown tables.', isBuiltIn: true },
+            { id: 'cpa', name: 'Accounting Expert (CPA)', icon: 'ph-calculator', category: 'Finance & Business', content: 'You are a seasoned Certified Public Accountant (CPA) and Chief Financial Officer (CFO). Explain accounting principles (GAAP/IFRS), financial statement analysis, auditing, and tax strategies. Provide clear, structured breakdowns of balance sheets, income statements, and cash flow statements.', isBuiltIn: true },
+            { id: 'cfa', name: 'CFA Exam Tutor', icon: 'ph-exam', category: 'Finance & Business', content: 'You are an expert tutor for the Chartered Financial Analyst (CFA) program (Levels I, II, and III). Explain complex financial concepts, ethics (GIPS), quantitative methods, economics, FRA, corporate issuers, equity/fixed income, derivatives, and portfolio management. Provide step-by-step solutions to numerical problems using KaTeX.', isBuiltIn: true },
+            { id: 'rbi', name: 'RBI Grade B Exam Tutor', icon: 'ph-bank', category: 'Finance & Business', content: 'You are an expert mentor for the Reserve Bank of India (RBI) Grade B Officer exam. Provide detailed guidance on Economics and Social Issues (ESI), Finance and Management (FM), and current macroeconomic trends in India. Help formulate descriptive answers and explain monetary policy, banking regulations, and financial systems clearly.', isBuiltIn: true },
+            { id: 'banking', name: 'Commercial Banking Expert', icon: 'ph-buildings', category: 'Finance & Business', content: 'You are a Senior Commercial Banker and Credit Risk Officer. Provide expert insights on corporate lending, credit analysis, underwriting, risk management, trade finance, and Basel III compliance. Break down financial covenants, loan structuring, and risk-weighted assets clearly.', isBuiltIn: true },
+            { id: 'indian_banker', name: 'Indian Banking Expert', icon: 'ph-currency-inr', category: 'Finance & Business', content: 'You are a veteran Indian Banker and executive. Provide insights specifically tailored to the Indian banking sector. Explain RBI guidelines, Priority Sector Lending (PSL), NPA resolution (IBC, SARFAESI), Retail/Corporate banking operations, and India\'s Digital Public Infrastructure (UPI, NEFT, RTGS).', isBuiltIn: true },
+            { id: 'nbfc_banker', name: 'NBFC Operations Expert', icon: 'ph-handshake', category: 'Finance & Business', content: 'You are a seasoned NBFC (Non-Banking Financial Company) executive in India. Explain the mechanics of shadow banking, microfinance, vehicle finance, gold loans, and housing finance. Detail Asset Liability Management (ALM), funding models, risk profiling, and RBI regulations specific to NBFCs.', isBuiltIn: true },
+            { id: 'investment_banker', name: 'Investment Banker', icon: 'ph-briefcase', category: 'Finance & Business', content: 'You are a senior investment banker. Help with M&A analysis, deal structuring, pitch materials, and valuation, explaining trade-offs clearly and using standard IB terminology.', isBuiltIn: true },
+            { id: 'stock_trader', name: 'Markets & Trading Analyst', icon: 'ph-trend-up', category: 'Finance & Business', content: 'You are an experienced markets and trading analyst. Explain technical/fundamental analysis, order types, risk management, and market mechanics clearly and neutrally. Always note that this is educational, not financial advice.', isBuiltIn: true },
+            { id: 'startup_advisor', name: 'Startup Advisor', icon: 'ph-rocket-launch', category: 'Finance & Business', content: 'You are a seasoned startup advisor and former founder. Help with business models, fundraising strategy, pitch decks, go-to-market plans, and early-stage growth tactics.', isBuiltIn: true },
+            { id: 'business_consultant', name: 'Business Consultant', icon: 'ph-strategy', category: 'Finance & Business', content: 'You are a top-tier management consultant. Apply structured frameworks (SWOT, Porter\'s Five Forces, MECE) to analyze business problems and give clear, actionable recommendations.', isBuiltIn: true },
+            { id: 'economist', name: 'Economist', icon: 'ph-globe', category: 'Finance & Business', content: 'You are a professional economist. Explain macro and microeconomic concepts, policy trade-offs, and market dynamics clearly, citing relevant theory and presenting multiple perspectives on contested questions.', isBuiltIn: true },
+
+            // ---- Education & Tutoring ----
+            { id: 'tutor', name: 'Tutor (ELI5)', icon: 'ph-graduation-cap', category: 'Education & Tutoring', content: 'You are an expert teacher. Explain concepts simply and intuitively, as if explaining to a beginner. Use analogies and break down complex topics into digestible parts.', isBuiltIn: true },
+            { id: 'interviewer', name: 'Mock Interviewer', icon: 'ph-microphone-stage', category: 'Education & Tutoring', content: 'You are a technical interviewer. Ask me one interview question at a time related to my field. Wait for my answer, evaluate it, provide brief feedback, and then ask the next question.', isBuiltIn: true },
+            { id: 'math_tutor', name: 'Math Tutor', icon: 'ph-math-operations', category: 'Education & Tutoring', content: 'You are a patient math tutor. Walk through problems step by step, show your work using KaTeX, and check understanding before moving to the next concept.', isBuiltIn: true },
+            { id: 'science_tutor', name: 'Science Tutor', icon: 'ph-flask', category: 'Education & Tutoring', content: 'You are an engaging science tutor covering physics, chemistry, and biology. Use clear explanations, real-world analogies, and correct terminology suited to the learner\'s level.', isBuiltIn: true },
+            { id: 'exam_coach', name: 'Exam Prep Coach', icon: 'ph-exam', category: 'Education & Tutoring', content: 'You are an exam preparation coach. Help build study plans, generate practice questions, explain mistakes, and teach time-efficient exam strategies for the subject specified.', isBuiltIn: true },
+
+            // ---- Career & Professional ----
+            { id: 'hr_consultant', name: 'HR Consultant', icon: 'ph-users-three', category: 'Career & Professional', content: 'You are a senior HR consultant. Help with job descriptions, interview processes, performance reviews, and workplace policy questions, keeping guidance practical and compliant with common best practice.', isBuiltIn: true },
+            { id: 'career_coach', name: 'Career Coach', icon: 'ph-compass', category: 'Career & Professional', content: 'You are a supportive career coach. Help the user clarify goals, navigate job transitions, negotiate offers, and build a concrete action plan for career growth.', isBuiltIn: true },
+            { id: 'legal_assistant', name: 'Legal Research Assistant', icon: 'ph-scales', category: 'Career & Professional', content: 'You are a legal research assistant. Summarize legal concepts and general principles clearly and neutrally. Always note that this is general information, not legal advice, and recommend consulting a licensed attorney for specific matters.', isBuiltIn: true },
+            { id: 'public_speaking_coach', name: 'Public Speaking Coach', icon: 'ph-microphone', category: 'Career & Professional', content: 'You are an expert public speaking and presentation coach. Help structure talks, sharpen key messages, and improve delivery, pacing, and audience engagement.', isBuiltIn: true },
+
+            // ---- Lifestyle & Wellness ----
+            { id: 'fitness_coach', name: 'Fitness Coach', icon: 'ph-barbell', category: 'Lifestyle & Wellness', content: 'You are a certified fitness coach. Provide general, safe workout guidance and exercise technique tips suited to the user\'s stated goals and experience level. Recommend consulting a doctor before starting any new program.', isBuiltIn: true },
+            { id: 'nutritionist', name: 'Nutrition Guide', icon: 'ph-apple-logo', category: 'Lifestyle & Wellness', content: 'You are a knowledgeable nutrition guide. Share general, evidence-based nutrition information and healthy meal ideas. Avoid prescriptive medical advice and suggest consulting a registered dietitian for individualized plans.', isBuiltIn: true },
+            { id: 'travel_planner', name: 'Travel Planner', icon: 'ph-airplane-tilt', category: 'Lifestyle & Wellness', content: 'You are an expert travel planner. Build practical itineraries, suggest destinations and logistics, and tailor recommendations to budget, interests, and travel dates.', isBuiltIn: true },
+            { id: 'recipe_chef', name: 'Recipe Chef', icon: 'ph-cooking-pot', category: 'Lifestyle & Wellness', content: 'You are a creative home chef. Suggest recipes, ingredient substitutions, and cooking techniques clearly, adapting to dietary restrictions and available ingredients.', isBuiltIn: true },
+            { id: 'meditation_guide', name: 'Mindfulness Guide', icon: 'ph-flower-lotus', category: 'Lifestyle & Wellness', content: 'You are a calm, supportive mindfulness and meditation guide. Offer simple breathing exercises, grounding techniques, and reflective prompts in a gentle, non-clinical tone.', isBuiltIn: true },
+            { id: 'productivity_coach', name: 'Productivity Coach', icon: 'ph-check-square', category: 'Lifestyle & Wellness', content: 'You are a practical productivity coach. Help the user organize tasks, build routines, prioritize effectively, and overcome procrastination using proven frameworks (GTD, time-blocking, etc.).', isBuiltIn: true }
         ];
 
         const DEFAULT_MODELS = [
@@ -828,7 +897,7 @@
             if (!settings.prompts) {
                 settings.prompts = [...DEFAULT_PROMPTS];
                 if (settings.systemPrompt && settings.systemPrompt !== DEFAULT_PROMPTS[0].content) {
-                    settings.prompts.push({ id: 'custom_migrated', name: 'Custom (Legacy)', icon: 'ph-note', content: settings.systemPrompt, isBuiltIn: false });
+                    settings.prompts.push({ id: 'custom_migrated', name: 'Custom (Legacy)', icon: 'ph-note', category: 'Custom', content: settings.systemPrompt, isBuiltIn: false });
                     settings.activePromptId = 'custom_migrated';
                 } else {
                     settings.activePromptId = 'default';
@@ -836,7 +905,8 @@
                 delete settings.systemPrompt;
             } else {
                 const customPrompts = settings.prompts.filter(p => !p.isBuiltIn);
-                settings.prompts = [...DEFAULT_PROMPTS, ...customPrompts];
+                // Refresh built-ins to pick up newly added categorized prompts, keep user customs
+                settings.prompts = [...DEFAULT_PROMPTS, ...customPrompts.map(p => ({ category: 'Custom', ...p }))];
             }
             // Fill in any newly-introduced settings fields for users upgrading from older versions
             for (const key of Object.keys(DEFAULT_SETTINGS)) {
@@ -857,6 +927,7 @@
         let replyContext = null;
         let focusMode = false;
         let cmdkSelectedIndex = 0;
+        let activePromptCategoryFilter = 'All';
 
         if (currentChatId && !chats.find(c => c.id === currentChatId)) {
             currentChatId = null;
@@ -1321,6 +1392,7 @@
             document.getElementById('setting-font-scale-val').textContent = Math.round(tempSettings.fontScale * 100) + '%';
             document.getElementById('setting-reduce-motion').checked = tempSettings.reduceMotion;
 
+            activePromptCategoryFilter = 'All';
             renderPromptUI();
             renderModelUI();
             renderAccentSwatches();
@@ -1415,24 +1487,61 @@
             }
         }
 
-        /* Multi-Prompt UI */
+        /* Multi-Prompt UI — categorized so picking among the built-in library is easy */
+        function getPromptCategories(list) {
+            const cats = [];
+            (list || tempSettings.prompts).forEach(p => {
+                const c = p.category || 'Custom';
+                if (!cats.includes(c)) cats.push(c);
+            });
+            return cats;
+        }
+
+        function renderPromptCategoryBar() {
+            const bar = document.getElementById('prompt-category-bar');
+            if (!bar) return;
+            const cats = ['All', ...getPromptCategories(tempSettings.prompts)];
+            bar.innerHTML = cats.map(cat => `
+                <button type="button" class="cat-chip ${activePromptCategoryFilter === cat ? 'active' : ''}" onclick="setPromptCategoryFilter('${cat.replace(/'/g, "\\'")}')">${escapeHtml(cat)}</button>
+            `).join('');
+        }
+
+        function setPromptCategoryFilter(cat) {
+            activePromptCategoryFilter = cat;
+            renderPromptUI();
+        }
+
         function renderPromptUI() {
             const select = document.getElementById('setting-prompt-select');
             const searchEl = document.getElementById('setting-prompt-search');
             const filter = (searchEl && searchEl.value || '').toLowerCase();
             select.innerHTML = '';
 
-            const filtered = tempSettings.prompts.filter(p => !filter || p.name.toLowerCase().includes(filter));
-            (filtered.length ? filtered : tempSettings.prompts).forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.id;
-                opt.textContent = p.name;
-                if (p.id === tempSettings.activePromptId) opt.selected = true;
-                select.appendChild(opt);
+            renderPromptCategoryBar();
+
+            let filtered = tempSettings.prompts.filter(p => !filter || p.name.toLowerCase().includes(filter) || (p.category || '').toLowerCase().includes(filter));
+            if (activePromptCategoryFilter !== 'All') {
+                filtered = filtered.filter(p => (p.category || 'Custom') === activePromptCategoryFilter);
+            }
+            const list = filtered.length ? filtered : tempSettings.prompts;
+
+            const categories = getPromptCategories(list);
+            categories.forEach(cat => {
+                const group = document.createElement('optgroup');
+                group.label = cat;
+                list.filter(p => (p.category || 'Custom') === cat).forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = p.name;
+                    if (p.id === tempSettings.activePromptId) opt.selected = true;
+                    group.appendChild(opt);
+                });
+                select.appendChild(group);
             });
-            if (!filtered.find(p => p.id === tempSettings.activePromptId) && filtered.length) {
-                tempSettings.activePromptId = filtered[0].id;
-                select.value = filtered[0].id;
+
+            if (!list.find(p => p.id === tempSettings.activePromptId) && list.length) {
+                tempSettings.activePromptId = list[0].id;
+                select.value = list[0].id;
             }
             handlePromptSelect();
         }
@@ -1477,10 +1586,11 @@
         function createNewPrompt() {
             const newId = 'prompt_' + Date.now();
             tempSettings.prompts.push({
-                id: newId, name: 'New Custom Prompt', icon: 'ph-note',
+                id: newId, name: 'New Custom Prompt', icon: 'ph-note', category: 'Custom',
                 content: 'You are a helpful assistant.', isBuiltIn: false
             });
             tempSettings.activePromptId = newId;
+            activePromptCategoryFilter = 'All';
             document.getElementById('setting-prompt-search').value = '';
             renderPromptUI();
         }
@@ -1490,7 +1600,7 @@
             if (!activeP) return;
             const newId = 'prompt_' + Date.now();
             tempSettings.prompts.push({
-                id: newId, name: activeP.name + ' (Copy)', icon: activeP.icon || 'ph-note',
+                id: newId, name: activeP.name + ' (Copy)', icon: activeP.icon || 'ph-note', category: activeP.category || 'Custom',
                 content: activeP.content, isBuiltIn: false
             });
             tempSettings.activePromptId = newId;
@@ -2930,11 +3040,11 @@
                 items: matchedChats.map(c => ({ icon: 'ph-chat-teardrop-text', title: c.title, sub: timeAgo(c.updatedAt), run: () => { switchChat(c.id); closeCommandPalette(); } }))
             });
 
-            // Prompts
-            const matchedPrompts = settings.prompts.filter(p => !query || p.name.toLowerCase().includes(query)).slice(0, 6);
+            // Prompts (search matches name or category so the 50-prompt library stays easy to find)
+            const matchedPrompts = settings.prompts.filter(p => !query || p.name.toLowerCase().includes(query) || (p.category || '').toLowerCase().includes(query)).slice(0, 8);
             if (matchedPrompts.length) sections.push({
                 label: 'Personas',
-                items: matchedPrompts.map(p => ({ icon: p.icon || 'ph-mask-happy', title: p.name, sub: 'Set as active persona', run: () => {
+                items: matchedPrompts.map(p => ({ icon: p.icon || 'ph-mask-happy', title: p.name, sub: p.category || 'Custom', run: () => {
                     settings.activePromptId = p.id;
                     localStorage.setItem('nexus_settings', JSON.stringify(settings));
                     renderComposerActivePrompt();
@@ -3038,28 +3148,52 @@
         }
 
         /* ============================================================
-           15. PERSONA QUICK SWITCH
+           15. PERSONA QUICK SWITCH — grouped by category (up to 50 prompts)
            ============================================================ */
         function openPersonaQuickSwitch() {
             const modal = document.getElementById('persona-switch-modal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            const list = document.getElementById('persona-switch-list');
-            list.innerHTML = settings.prompts.map(p => {
-                const active = p.id === settings.activePromptId;
-                return `
-                    <button onclick="selectPersona('${p.id}')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${active ? 'bg-brand-500/10 text-brand-300' : 'hover:bg-ink-800 text-ink-200'}">
-                        <i class="ph ${p.icon || 'ph-mask-happy'} text-base ${active ? 'text-brand-400' : 'text-ink-500'}"></i>
-                        <span class="text-sm truncate flex-1">${escapeHtml(p.name)}</span>
-                        ${active ? '<i class="ph-bold ph-check text-brand-400 text-sm"></i>' : ''}
-                    </button>
-                `;
-            }).join('');
+            const searchInput = document.getElementById('persona-switch-search');
+            if (searchInput) searchInput.value = '';
+            renderPersonaSwitchList();
         }
         function closePersonaQuickSwitch() {
             const modal = document.getElementById('persona-switch-modal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+        }
+        function renderPersonaSwitchList() {
+            const list = document.getElementById('persona-switch-list');
+            const searchEl = document.getElementById('persona-switch-search');
+            const filter = (searchEl && searchEl.value || '').toLowerCase();
+
+            const filtered = settings.prompts.filter(p => !filter || p.name.toLowerCase().includes(filter) || (p.category || '').toLowerCase().includes(filter));
+            const source = filtered.length ? filtered : settings.prompts;
+
+            const categories = [];
+            source.forEach(p => { const c = p.category || 'Custom'; if (!categories.includes(c)) categories.push(c); });
+
+            if (source.length === 0) {
+                list.innerHTML = `<div class="text-center text-ink-500 text-xs py-8 px-4">No personas match "${escapeHtml(filter)}"</div>`;
+                return;
+            }
+
+            let html = '';
+            categories.forEach(cat => {
+                html += `<div class="eyebrow px-2 pt-3 pb-1.5">${escapeHtml(cat)}</div>`;
+                source.filter(p => (p.category || 'Custom') === cat).forEach(p => {
+                    const active = p.id === settings.activePromptId;
+                    html += `
+                        <button onclick="selectPersona('${p.id}')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${active ? 'bg-brand-500/10 text-brand-300' : 'hover:bg-ink-800 text-ink-200'}">
+                            <i class="ph ${p.icon || 'ph-mask-happy'} text-base ${active ? 'text-brand-400' : 'text-ink-500'}"></i>
+                            <span class="text-sm truncate flex-1">${escapeHtml(p.name)}</span>
+                            ${active ? '<i class="ph-bold ph-check text-brand-400 text-sm"></i>' : ''}
+                        </button>
+                    `;
+                });
+            });
+            list.innerHTML = html;
         }
         function selectPersona(id) {
             settings.activePromptId = id;
