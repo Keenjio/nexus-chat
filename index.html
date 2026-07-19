@@ -851,6 +851,7 @@
         let isStreaming = false;
         let pendingExcelData = null;
         let pendingExcelMeta = null;
+        let pendingExcelStructured = null; // { headers, rows } — kept alongside raw text so we can render a real table and compute stats without re-parsing
         let abortController = null;
         let editingMessageIndex = null;
         let replyContext = null;
@@ -957,6 +958,82 @@
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
+        }
+
+        // Computes per-column stats (numeric: count/sum/avg/min/max, text: unique count)
+        // used both for the in-chat preview and for grounding the AI's answer in real
+        // pre-computed numbers rather than relying on it to do arithmetic over raw text.
+        function computeColumnStats(headers, rows) {
+            return headers.map((header, colIndex) => {
+                const values = rows.map(r => r[colIndex] != null ? String(r[colIndex]).trim() : '').filter(v => v !== '');
+                if (values.length === 0) return { header, type: 'empty' };
+
+                const numericValues = values.map(v => Number(v.replace(/,/g, ''))).filter(v => !isNaN(v));
+                if (numericValues.length > values.length * 0.8 && numericValues.length > 0) {
+                    const sum = numericValues.reduce((a, b) => a + b, 0);
+                    const avg = sum / numericValues.length;
+                    const min = Math.min(...numericValues);
+                    const max = Math.max(...numericValues);
+                    return { header, type: 'numeric', count: numericValues.length, sum, avg, min, max };
+                }
+                const unique = new Set(values).size;
+                return { header, type: 'text', count: values.length, unique };
+            });
+        }
+
+        // Renders a full (not truncated) HTML table for headers/rows, used to show the
+        // actual pasted spreadsheet inline in the chat bubble, matching the app's styling.
+        function renderDataTableHtml(headers, rows, opts = {}) {
+            const maxRows = opts.maxRows || rows.length;
+            const shown = rows.slice(0, maxRows);
+            let html = '<div class="overflow-x-auto custom-scrollbar rounded-lg border border-ink-700 my-1">';
+            html += '<table class="w-full text-xs text-left text-ink-300 border-collapse">';
+            html += '<thead><tr class="bg-ink-800 border-b border-ink-700 sticky top-0">';
+            headers.forEach(h => {
+                html += `<th class="px-2.5 py-1.5 font-semibold text-ink-100 border-r border-ink-700/50 whitespace-nowrap">${escapeHtml(String(h))}</th>`;
+            });
+            html += '</tr></thead><tbody class="divide-y divide-ink-700/50">';
+            shown.forEach(row => {
+                html += '<tr class="hover:bg-ink-800/40 transition-colors">';
+                headers.forEach((h, i) => {
+                    const cell = row[i] != null ? String(row[i]) : '';
+                    html += `<td class="px-2.5 py-1.5 border-r border-ink-700/50 whitespace-nowrap" title="${escapeHtml(cell)}">${escapeHtml(cell)}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            if (rows.length > maxRows) {
+                html += `<div class="text-center text-xs text-ink-500 mt-1 font-medium">… and ${rows.length - maxRows} more rows</div>`;
+            }
+            return html;
+        }
+
+        // Builds a plain-text summary of computed column stats, formatted for inclusion
+        // in the message sent to the AI so it has accurate pre-computed numbers to work
+        // from instead of eyeballing arithmetic over the raw table itself.
+        function formatStatsForAI(stats, rowCount) {
+            let out = `Rows: ${rowCount}, Columns: ${stats.length}\n\nPer-column summary:\n`;
+            stats.forEach(s => {
+                if (s.type === 'numeric') {
+                    out += `- ${s.header}: numeric, count=${s.count}, sum=${s.sum}, avg=${s.avg.toFixed(4)}, min=${s.min}, max=${s.max}\n`;
+                } else if (s.type === 'text') {
+                    out += `- ${s.header}: text, count=${s.count}, unique_values=${s.unique}\n`;
+                } else {
+                    out += `- ${s.header}: (empty)\n`;
+                }
+            });
+            return out;
+        }
+
+        // Converts headers/rows to a markdown table for sending to the AI (much more
+        // token-efficient and reliably parseable by the model than raw TSV/CSV).
+        function rowsToMarkdownTable(headers, rows) {
+            let md = '| ' + headers.map(h => String(h).replace(/\|/g, '\\|')).join(' | ') + ' |\n';
+            md += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+            rows.forEach(row => {
+                md += '| ' + headers.map((h, i) => String(row[i] ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ')).join(' | ') + ' |\n';
+            });
+            return md;
         }
 
         function preProcessMarkdown(text) {
@@ -1724,8 +1801,26 @@
             if (role === 'user') {
                 inner.className = 'max-w-[85%] md:max-w-[75%] flex flex-col items-end gap-1.5';
 
-                let displayHtml = escapeHtml(content);
-                displayHtml = displayHtml.replace(/### Attached Spreadsheet Data ###[\s\S]+/, '<div class="mt-2 inline-flex items-center gap-2 bg-ink-950 text-brand-400 px-3 py-2 rounded-xl text-xs font-medium border border-ink-700"><i class="ph ph-file-csv text-base"></i> Spreadsheet attached</div>');
+                let displayHtml;
+                const sheetMatch = content.match(/<!--SHEETDATA:([\s\S]*?)-->([\s\S]*)$/);
+                if (sheetMatch) {
+                    const cutIdx = content.indexOf('\n\n### Attached Spreadsheet Data');
+                    const beforeSheet = cutIdx !== -1 ? content.slice(0, cutIdx) : content.slice(0, content.indexOf('<!--SHEETDATA:'));
+                    let tablePreviewHtml = '';
+                    try {
+                        const parsed = JSON.parse(sheetMatch[1]);
+                        if (parsed && parsed.headers && parsed.rows) {
+                            tablePreviewHtml = renderDataTableHtml(parsed.headers, parsed.rows, { maxRows: 25 });
+                        }
+                    } catch (e) {
+                        tablePreviewHtml = '<div class="text-xs text-ink-500 italic">(table preview unavailable)</div>';
+                    }
+                    displayHtml = escapeHtml(beforeSheet.trim()) +
+                        `<div class="mt-2 flex items-center gap-2 text-brand-400 text-xs font-medium"><i class="ph ph-file-csv text-base"></i> Spreadsheet data</div>` +
+                        tablePreviewHtml;
+                } else {
+                    displayHtml = escapeHtml(content);
+                }
 
                 inner.innerHTML = `
                     <div class="bg-ink-700/70 text-ink-50 rounded-[22px] rounded-br-md px-5 py-3 shadow-sm text-[0.95rem] whitespace-pre-wrap leading-relaxed" data-bubble>${displayHtml}</div>
@@ -1805,7 +1900,7 @@
 
             const wrapper = els.messagesWrapper.querySelector(`[data-msg-index="${idx}"]`);
             const bubble = wrapper.querySelector('[data-bubble]');
-            const rawContent = msg.content.replace(/### Attached Spreadsheet Data ###[\s\S]+/, '').trim() || msg.content;
+            const rawContent = msg.content.replace(/\n\n### Attached Spreadsheet Data[\s\S]+/, '').trim() || msg.content;
 
             bubble.outerHTML = `
                 <div class="flex flex-col gap-2 w-full items-end" data-editing="${idx}">
@@ -1862,7 +1957,7 @@
         function copyRawMessage(idx) {
             const chat = chats.find(c => c.id === currentChatId);
             if (!chat || !chat.messages[idx]) return;
-            const text = chat.messages[idx].content.replace(/### Attached Spreadsheet Data ###[\s\S]+/, '[spreadsheet data omitted]');
+            const text = chat.messages[idx].content.replace(/### Attached Spreadsheet Data[\s\S]+/, '[spreadsheet data omitted]');
             navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard'));
         }
 
@@ -2077,6 +2172,7 @@
         function clearDataPreview() {
             pendingExcelData = null;
             pendingExcelMeta = null;
+            pendingExcelStructured = null;
             els.dpPanel.classList.add('hidden');
             renderAttachmentChips();
         }
@@ -2105,42 +2201,119 @@
             event.target.value = '';
         }
 
+        // A comma only counts as a real field delimiter if, after removing commas that sit
+        // between two digits (thousands separators like "12,100" or Indian-style "26,12,580"),
+        // the lines still consistently contain a stable number of commas. This avoids
+        // misdetecting number-heavy space/tab-separated tables as CSV just because their
+        // numbers happen to contain commas.
+        function stripNumericCommas(s) {
+            return s.replace(/(\d),(?=\d)/g, '$1');
+        }
+
+        function isRealCsv(lines) {
+            const stripped = lines.map(stripNumericCommas);
+            if (!stripped.some(l => l.includes(','))) return false;
+            const commaCounts = stripped.map(l => (l.match(/,/g) || []).length);
+            const maxCommas = Math.max(...commaCounts);
+            const minCommas = Math.min(...commaCounts);
+            return minCommas >= 2 && (maxCommas - minCommas) <= 1;
+        }
+
         function isTabularData(text) {
             const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
             if (lines.length < 2) return false;
 
             if (lines.every(l => l.includes('\t'))) return true;
+            if (isRealCsv(lines)) return true;
 
-            if (!text.includes(',')) {
-                const spaceChunks = lines.map(l => l.split(/\s+/).length);
-                const maxChunks = Math.max(...spaceChunks);
-                const minChunks = Math.min(...spaceChunks);
-                if (minChunks >= 3 && (maxChunks - minChunks) <= 2) return true;
-                return false;
-            }
+            // Column-aligned tables copied from web pages / PDFs often preserve runs of 2+
+            // spaces between columns even if a proportional font makes the gaps look uneven
+            // on screen. Check that first since it best preserves original column splits.
+            const wideChunks = lines.map(l => l.split(/\s{2,}/).filter(c => c.trim() !== '').length);
+            const maxWide = Math.max(...wideChunks);
+            const minWide = Math.min(...wideChunks);
+            if (minWide >= 3 && (maxWide - minWide) <= 2) return true;
 
-            if (lines.every(l => l.includes(','))) {
-                const commaCounts = lines.map(l => (l.match(/,/g) || []).length);
-                const maxCommas = Math.max(...commaCounts);
-                const minCommas = Math.min(...commaCounts);
-                if (minCommas >= 2 && maxCommas - minCommas <= 1) return true;
-            }
+            // Fallback: plain single-space-separated tables. Column *count* alignment is
+            // unreliable here (text cells and long headers have different word counts), so
+            // just require at least 3 whitespace-separated tokens per line as a loose signal
+            // — the real column-splitting happens in parseSpreadsheet's numeric-boundary logic.
+            const spaceChunks = lines.map(l => l.split(/\s+/).length);
+            if (Math.min(...spaceChunks) >= 3) return true;
 
             return false;
         }
 
-        function parseSpreadsheet(text) {
-            let delimiter = '\t';
-            if (text.includes('\t')) {
-                delimiter = '\t';
-            } else if (text.includes(',')) {
-                delimiter = ',';
-            } else {
-                const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-                if (lines.length > 1) {
-                    return lines.map(l => l.trim().split(/\s+/));
+        // Splits a single-space-separated row into cells using numeric-token boundaries:
+        // any run of non-numeric words is merged into one text cell, and each numeric-looking
+        // token (numbers, percentages, or "-" placeholders) becomes its own cell. This handles
+        // labels containing spaces (e.g. "Niger Seed(Ramtil)") without a reliable delimiter.
+        function looksNumericToken(tok) {
+            return /^-+$/.test(tok) || /^[\d,]+\.?\d*%?$/.test(tok);
+        }
+
+        function splitRowByNumericBoundary(line) {
+            const tokens = line.trim().split(/\s+/);
+            const cells = [];
+            let buffer = [];
+            for (const tok of tokens) {
+                if (looksNumericToken(tok)) {
+                    if (buffer.length) { cells.push(buffer.join(' ')); buffer = []; }
+                    cells.push(tok);
+                } else {
+                    buffer.push(tok);
                 }
-                return null;
+            }
+            if (buffer.length) cells.push(buffer.join(' '));
+            return cells;
+        }
+
+        function parseSpreadsheet(text) {
+            const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+            if (lines.length < 2) return null;
+
+            let delimiter = null;
+            if (lines.every(l => l.includes('\t'))) {
+                delimiter = '\t';
+            } else if (isRealCsv(lines.map(l => l.trim()))) {
+                delimiter = ',';
+            }
+
+            if (!delimiter) {
+                // No reliable single-character delimiter — try wide-space (2+ spaces) first
+                // since it best preserves the original column boundaries, including headers.
+                const wideRows = lines.map(l => l.trim().split(/\s{2,}/).filter(c => c.trim() !== ''));
+                const wideCounts = wideRows.map(r => r.length);
+                if (Math.min(...wideCounts) >= 3 && (Math.max(...wideCounts) - Math.min(...wideCounts)) <= 2) {
+                    return wideRows;
+                }
+
+                // Fall back to numeric-boundary splitting for the DATA rows (this works well
+                // since data rows contain numbers to anchor on). A text-only header row (no
+                // numeric tokens at all) can't be split the same way, so if it disagrees with
+                // the data rows' column count, keep it as a single merged header cell rather
+                // than guessing — this avoids silently producing a misaligned table.
+                const smartRows = lines.map(l => splitRowByNumericBoundary(l.trim()));
+                const dataRowCounts = smartRows.slice(1).map(r => r.length);
+                if (dataRowCounts.length > 0) {
+                    const minData = Math.min(...dataRowCounts);
+                    const maxData = Math.max(...dataRowCounts);
+                    if (minData >= 2 && (maxData - minData) <= 2) {
+                        const targetCols = Math.round(dataRowCounts.reduce((a, b) => a + b, 0) / dataRowCounts.length);
+                        let headerRow = smartRows[0];
+                        if (headerRow.length !== targetCols) {
+                            // Header didn't split cleanly (likely all-text, e.g. long column
+                            // names with no numbers) — use generic column labels instead of a
+                            // misaligned guess, so the table stays structurally correct.
+                            headerRow = Array.from({ length: targetCols }, (_, i) => `Column ${i + 1}`);
+                            return [headerRow, ...smartRows.slice(1)];
+                        }
+                        return smartRows;
+                    }
+                }
+
+                // Last resort: naive single-space split (may misalign multi-word labels).
+                return lines.map(l => l.trim().split(/\s+/));
             }
 
             let rows = [];
@@ -2240,6 +2413,7 @@
 
             pendingExcelData = rawText;
             pendingExcelMeta = { rows: data.length, cols: headers.length, source: sourceName || 'Pasted data' };
+            pendingExcelStructured = { headers, rows: data };
 
             let tableHtml = '<div class="overflow-x-auto custom-scrollbar pb-1 h-full"><table class="w-full text-xs text-left text-ink-300"><thead><tr class="bg-ink-800 border-b border-ink-700">';
             headers.slice(0, 6).forEach(h => tableHtml += `<th class="px-2 py-1.5 font-semibold border-r border-ink-700/50 whitespace-nowrap">${escapeHtml(String(h))}</th>`);
@@ -2514,6 +2688,7 @@
 
             pendingExcelData = tsvString;
             pendingExcelMeta = { rows: activeSheet.rows.length, cols: activeSheet.headers.length, source: activeTab === 'pivot' ? 'Pivot result' : 'Filtered data' };
+            pendingExcelStructured = { headers: [...activeSheet.headers], rows: activeSheet.rows.map(r => [...r]) };
 
             let tableHtml = '<div class="overflow-x-auto custom-scrollbar pb-1 h-full"><table class="w-full text-xs text-left text-ink-300"><thead><tr class="bg-ink-800 border-b border-ink-700">';
             activeSheet.headers.slice(0, 6).forEach(h => tableHtml += `<th class="px-2 py-1.5 font-semibold border-r border-ink-700/50 whitespace-nowrap">${escapeHtml(h)}</th>`);
@@ -2549,9 +2724,21 @@
             if (isStreaming) return;
 
             let finalPayload = text;
-            if (pendingExcelData) {
-                const sheetContext = `\n\n### Attached Spreadsheet Data ###\n\n${pendingExcelData}`;
-                finalPayload = text ? (text + sheetContext) : "Please analyze this attached spreadsheet data.\n" + sheetContext;
+            if (pendingExcelData && pendingExcelStructured) {
+                const { headers, rows } = pendingExcelStructured;
+                const stats = computeColumnStats(headers, rows);
+                const statsBlock = formatStatsForAI(stats, rows.length);
+                const mdTable = rowsToMarkdownTable(headers, rows);
+
+                const sheetContext =
+                    `\n\n### Attached Spreadsheet Data (${pendingExcelMeta.source}) ###\n\n` +
+                    `${statsBlock}\n` +
+                    `Full data as a markdown table:\n\n${mdTable}`;
+
+                finalPayload = (text ? text : "Please analyze this attached spreadsheet data.") +
+                    sheetContext +
+                    `\n\n<!--SHEETDATA:${JSON.stringify({ headers, rows })}-->`;
+
                 clearDataPreview();
             }
 
@@ -2601,7 +2788,8 @@
                 { role: 'system', content: activeSystemPrompt.content }
             ];
             const contextLimit = settings.contextLimit || 10;
-            const contextMsgs = chat.messages.slice(-contextLimit).map(m => ({ role: m.role, content: m.content }));
+            const stripSheetMarker = (c) => typeof c === 'string' ? c.replace(/\n\n<!--SHEETDATA:[\s\S]*?-->\s*$/, '') : c;
+            const contextMsgs = chat.messages.slice(-contextLimit).map(m => ({ role: m.role, content: stripSheetMarker(m.content) }));
             apiMessages.push(...contextMsgs);
 
             let keysToTry = [settings.apiKey];
