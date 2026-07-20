@@ -1107,6 +1107,64 @@
             return md;
         }
 
+        // marked.js only recognizes a block as a GFM table if the header row is
+        // immediately followed by a valid "|---|---|" separator row. Free/small
+        // models frequently emit pipe-delimited rows WITHOUT that separator (or with
+        // a malformed one), which makes marked fall back to rendering the whole
+        // block as a single wall-of-text paragraph with literal "|" characters and
+        // <br> line breaks — this is the exact bug seen where tables show up as
+        // garbled unformatted text instead of an actual table. This function scans
+        // for contiguous blocks of pipe-containing lines and synthesizes a correct
+        // separator row when one is missing or malformed, so marked always renders
+        // a real <table> (which is also what lets you copy/paste a proper table
+        // straight into an email client).
+        function normalizeMarkdownTables(text) {
+            const lines = text.split(/\r?\n/);
+            const sepRegex = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+
+            const looksLikeRow = (line) => {
+                const t = line.trim();
+                if (!t || t.startsWith('```') || t.startsWith('>')) return false;
+                return t.includes('|');
+            };
+
+            const countCells = (line) => {
+                let t = line.trim();
+                if (t.startsWith('|')) t = t.slice(1);
+                if (t.endsWith('|')) t = t.slice(0, -1);
+                const cells = t.split('|');
+                return Math.max(cells.length, 1);
+            };
+
+            const out = [];
+            let i = 0;
+            while (i < lines.length) {
+                if (!looksLikeRow(lines[i])) {
+                    out.push(lines[i]);
+                    i++;
+                    continue;
+                }
+
+                const block = [];
+                let j = i;
+                while (j < lines.length && looksLikeRow(lines[j])) {
+                    block.push(lines[j]);
+                    j++;
+                }
+
+                if (block.length >= 2) {
+                    const colCount = countCells(block[0]);
+                    if (!sepRegex.test(block[1].trim())) {
+                        const sep = '| ' + Array(colCount).fill('---').join(' | ') + ' |';
+                        block.splice(1, 0, sep);
+                    }
+                }
+                out.push(...block);
+                i = j;
+            }
+            return out.join('\n');
+        }
+
         function preProcessMarkdown(text) {
             let processed = text;
             const tableRegex = /((?:\|.*?\|\r?\n)+)\s*\r?\n\s*((?:\|.*?\|\r?\n?)+)/g;
@@ -1116,6 +1174,7 @@
                 processed = processed.replace(tableRegex, '$1$2');
                 guard++;
             }
+            processed = normalizeMarkdownTables(processed);
             return processed;
         }
 
