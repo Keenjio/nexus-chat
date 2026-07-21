@@ -255,6 +255,16 @@
         }
         .cat-chip:hover { color: #dde1e7; border-color: #2a2f39; }
         .cat-chip.active { background: rgba(34,160,119,0.15); border-color: rgba(34,160,119,0.4); color: #6fd6ae; }
+
+        /* Streaming placeholder text — plain, monospace-ish, so a table that hasn't
+           finished arriving never gets mangled by the markdown/table parser mid-stream */
+        .streaming-plain {
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: #dde1e7;
+        }
     </style>
 </head>
 <body class="flex text-ink-100 selection:bg-brand-500/30 font-sans relative">
@@ -1107,64 +1117,6 @@
             return md;
         }
 
-        // marked.js only recognizes a block as a GFM table if the header row is
-        // immediately followed by a valid "|---|---|" separator row. Free/small
-        // models frequently emit pipe-delimited rows WITHOUT that separator (or with
-        // a malformed one), which makes marked fall back to rendering the whole
-        // block as a single wall-of-text paragraph with literal "|" characters and
-        // <br> line breaks — this is the exact bug seen where tables show up as
-        // garbled unformatted text instead of an actual table. This function scans
-        // for contiguous blocks of pipe-containing lines and synthesizes a correct
-        // separator row when one is missing or malformed, so marked always renders
-        // a real <table> (which is also what lets you copy/paste a proper table
-        // straight into an email client).
-        function normalizeMarkdownTables(text) {
-            const lines = text.split(/\r?\n/);
-            const sepRegex = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
-
-            const looksLikeRow = (line) => {
-                const t = line.trim();
-                if (!t || t.startsWith('```') || t.startsWith('>')) return false;
-                return t.includes('|');
-            };
-
-            const countCells = (line) => {
-                let t = line.trim();
-                if (t.startsWith('|')) t = t.slice(1);
-                if (t.endsWith('|')) t = t.slice(0, -1);
-                const cells = t.split('|');
-                return Math.max(cells.length, 1);
-            };
-
-            const out = [];
-            let i = 0;
-            while (i < lines.length) {
-                if (!looksLikeRow(lines[i])) {
-                    out.push(lines[i]);
-                    i++;
-                    continue;
-                }
-
-                const block = [];
-                let j = i;
-                while (j < lines.length && looksLikeRow(lines[j])) {
-                    block.push(lines[j]);
-                    j++;
-                }
-
-                if (block.length >= 2) {
-                    const colCount = countCells(block[0]);
-                    if (!sepRegex.test(block[1].trim())) {
-                        const sep = '| ' + Array(colCount).fill('---').join(' | ') + ' |';
-                        block.splice(1, 0, sep);
-                    }
-                }
-                out.push(...block);
-                i = j;
-            }
-            return out.join('\n');
-        }
-
         function preProcessMarkdown(text) {
             let processed = text;
             const tableRegex = /((?:\|.*?\|\r?\n)+)\s*\r?\n\s*((?:\|.*?\|\r?\n?)+)/g;
@@ -1174,8 +1126,64 @@
                 processed = processed.replace(tableRegex, '$1$2');
                 guard++;
             }
-            processed = normalizeMarkdownTables(processed);
             return processed;
+        }
+
+        // ------------------------------------------------------------------
+        // Table completeness check — used only to decide whether it's SAFE to
+        // run the full markdown parser on partially-streamed text. A GFM table
+        // needs: a header row, a separator row like |---|---|, and at least
+        // it must not be cut off mid-row (i.e. the text shouldn't end inside
+        // an unfinished table line while a table is in progress). If a table
+        // looks "in progress but not yet confirmed", we hold off on parsing
+        // it as markdown and show it as plain streaming text instead — this
+        // is what stops half-built tables from ever being flattened into
+        // squished, unreadable pipe-text like `.312 | true | 5 | Confused`.
+        // ------------------------------------------------------------------
+        function isSafeToRenderAsMarkdown(text) {
+            if (!text) return true;
+
+            const lines = text.split('\n');
+            // Find the start of what looks like a table block (a line starting with |
+            // or containing multiple | separators) near the end of the text.
+            let lastTableStart = -1;
+            for (let i = lines.length - 1; i >= 0; i--) {
+                const line = lines[i].trim();
+                if (line === '') { if (lastTableStart !== -1) break; else continue; }
+                if (line.includes('|')) {
+                    lastTableStart = i;
+                } else {
+                    break;
+                }
+            }
+
+            if (lastTableStart === -1) return true; // no trailing table-like block
+
+            const tableLines = lines.slice(lastTableStart).filter(l => l.trim() !== '');
+            if (tableLines.length === 0) return true;
+
+            // Need at least a header + separator row to be confident it's a real table
+            if (tableLines.length < 2) return false;
+
+            // Separator row must look like |---|---|... (dashes/colons/pipes only)
+            const sepRow = tableLines[1].trim();
+            const sepPattern = /^\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?$/;
+            if (!sepPattern.test(sepRow)) return false;
+
+            // Every data row after the separator should have a balanced-ish pipe count
+            // roughly matching the header, and should not look like it's still being typed
+            // (i.e. shouldn't end without a trailing pipe when other rows have one).
+            const headerPipes = (tableLines[0].match(/\|/g) || []).length;
+            for (let i = 2; i < tableLines.length; i++) {
+                const row = tableLines[i];
+                const rowPipes = (row.match(/\|/g) || []).length;
+                // Allow the very last row to still be mid-stream (fewer pipes so far)
+                const isLastLine = (i === tableLines.length - 1);
+                if (!isLastLine && rowPipes < headerPipes - 1) return false;
+                if (isLastLine && rowPipes < 2) return false; // last row barely started
+            }
+
+            return true;
         }
 
         function renderMessageText(text) {
@@ -2893,10 +2901,32 @@
             let success = false;
             let lastError = null;
             let usedModel = settings.model;
+            let firstChunkRendered = false;
 
+            // --------------------------------------------------------------
+            // renderChunk(): during streaming we must NEVER run the full
+            // markdown/table parser on text that ends mid-table, because an
+            // incomplete GFM table (header row present but separator/rows
+            // still arriving) gets misread as a plain paragraph and, combined
+            // with `breaks:true`, turns into squished pipe-delimited text
+            // exactly like the broken screenshot. So: while streaming, if the
+            // tail of the text looks like an in-progress-but-not-yet-complete
+            // table, we show it as plain preformatted text (readable, correct
+            // line breaks, no broken table flattening) instead of running it
+            // through marked. Once the table block is structurally complete
+            // (or once streaming finishes entirely) we switch to the full,
+            // properly-rendered HTML table.
+            // --------------------------------------------------------------
             const renderChunk = () => {
                 if (!needsRender) return;
-                botBubble.innerHTML = renderMessageText(botResponseText);
+                if (isSafeToRenderAsMarkdown(botResponseText)) {
+                    botBubble.innerHTML = renderMessageText(botResponseText);
+                    firstChunkRendered = true;
+                } else {
+                    // Plain, safe fallback — preserves line breaks/content exactly,
+                    // never mangles a table that's still being streamed in.
+                    botBubble.innerHTML = `<div class="streaming-plain">${escapeHtml(botResponseText)}</div>`;
+                }
                 needsRender = false;
                 scrollToBottom();
             };
@@ -2957,7 +2987,11 @@
 
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder('utf-8');
-                    botBubble.innerHTML = '';
+                    // NOTE: we intentionally do NOT clear botBubble.innerHTML here.
+                    // The periodic renderChunk() interval (started above) already
+                    // owns all rendering of botBubble from this point forward, so
+                    // clearing it here would just create a one-frame flash and adds
+                    // no value — leaving it out avoids a redundant DOM write.
 
                     while (true) {
                         const { done, value } = await reader.read();
@@ -2997,6 +3031,10 @@
 
             if (success || (lastError && lastError.name === 'AbortError')) {
                 if (botResponseText.trim() !== '') {
+                    // Final render always goes through the full markdown parser,
+                    // regardless of the in-stream "safe to render" check — by now
+                    // the full text is in hand, so any table is complete and will
+                    // parse correctly into a real <table>.
                     botBubble.innerHTML = renderMessageText(botResponseText);
                     applyKaTeX(botBubble);
                     chat.messages.push({ role: 'assistant', content: botResponseText, id: generateId('msg'), ts: Date.now(), model: usedModel });
