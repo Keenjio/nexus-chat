@@ -613,6 +613,7 @@
                             <input type="text" id="setting-model" class="flex-1 bg-ink-950 border border-ink-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-brand-500 text-white" placeholder="e.g., openrouter/free">
                             <button onclick="saveCurrentModel()" class="bg-ink-800 border border-ink-700 px-3 rounded-lg hover:text-brand-400 hover:border-brand-500 transition-colors text-ink-400 flex items-center justify-center" title="Save to quick access"><i class="ph ph-bookmark-simple"></i></button>
                         </div>
+                        <p class="text-xs text-ink-500 mb-3">Free-tier models (names ending <code class="text-[0.7rem]">:free</code>) are more likely to drop spaces/characters on long structured output like tables and figures. For reliable formatting, use a paid model (e.g. <code class="text-[0.7rem]">openai/gpt-4o-mini</code>) — verify current model names and pricing at <a href="https://openrouter.ai/models" target="_blank" rel="noopener" class="text-brand-400 hover:underline">openrouter.ai/models</a>.</p>
                         <label class="block text-xs font-medium text-ink-500 mb-2">Saved models (click to use, &times; to remove)</label>
                         <div class="flex flex-wrap gap-2" id="model-chips"></div>
                     </div>
@@ -803,7 +804,17 @@ Always format tables as proper Markdown GFM tables (header row, then a separator
 Formatting discipline: write clean, valid Markdown. Never place "**" directly against a list number or bullet with no space (e.g. never write "3.**text" — write "3. text" or "3. **text**" instead). Always leave a space between words — never run two words together. Bold/italic markers must always be closed in matching pairs on the same line or paragraph.`, isBuiltIn: true }
         ];
 
+        // NOTE on model choice: free-tier models (the ":free" suffixed ones below)
+        // are noticeably more prone to dropping spaces/characters and producing
+        // malformed markdown on long, structured, numeric-heavy output — this is
+        // a known limitation of free-tier routing, not a bug in this app. If
+        // formatting reliability matters (e.g. tables, financial figures), pick
+        // a paid model from openrouter.ai/models — verify the exact slug there,
+        // since available models and pricing change over time. gpt-4o-mini and
+        // similar "-mini"/"flash" tier paid models are usually a good balance of
+        // cost and reliability for this kind of structured business content.
         const DEFAULT_MODELS = [
+            'openai/gpt-4o-mini',
             'openrouter/free',
             'tencent/hy3:free',
             'poolside/laguna-xs-2.1:free',
@@ -2482,6 +2493,52 @@ Formatting discipline: write clean, valid Markdown. Never place "**" directly ag
             }
         });
 
+        // ------------------------------------------------------------------
+        // Detects rows that don't match the header's column count — the most
+        // common root cause of the AI producing garbled/merged output further
+        // downstream. If a pasted table has ragged rows (a cell that swallowed
+        // two fields because a delimiter was missing, or a dropped leading
+        // column like a missing serial number), the AI has to guess at field
+        // boundaries when reading it, and that guessing is exactly what shows
+        // up later as fused words/numbers and broken tables in the response.
+        // This never modifies the data — it only flags it, since silently
+        // "fixing" column misalignment could just as easily corrupt correct
+        // data (e.g. a company name that legitimately contains a comma).
+        // ------------------------------------------------------------------
+        function checkRowQuality(headers, rows) {
+            const expectedCols = headers.length;
+            const issues = [];
+            rows.forEach((row, idx) => {
+                if (row.length !== expectedCols) {
+                    issues.push({
+                        rowNumber: idx + 2, // +1 for header row, +1 for 1-indexing
+                        actualCols: row.length,
+                        expectedCols,
+                        preview: row.slice(0, 3).join(' | ')
+                    });
+                }
+            });
+            return issues;
+        }
+
+        function renderRowQualityWarning(issues, totalRows) {
+            if (issues.length === 0) return '';
+            const shown = issues.slice(0, 4);
+            const moreCount = issues.length - shown.length;
+            return `
+                <div class="mt-2.5 pt-2.5 border-t border-rose-500/20">
+                    <div class="flex items-center gap-1.5 text-rose-400 text-xs font-semibold mb-1.5">
+                        <i class="ph-fill ph-warning-circle text-sm"></i> ${issues.length} of ${totalRows} row${totalRows !== 1 ? 's' : ''} ${issues.length === 1 ? "doesn't" : "don't"} match the header's column count
+                    </div>
+                    <div class="text-[0.68rem] text-ink-500 mb-1.5 leading-relaxed">Misaligned rows are the most common cause of garbled or fused text in the AI's response — it has to guess field boundaries. Consider fixing the source before sending.</div>
+                    <div class="space-y-1">
+                        ${shown.map(iss => `<div class="text-[0.68rem] font-mono text-rose-300/80 truncate">Row ${iss.rowNumber}: ${iss.actualCols} cols (expected ${iss.expectedCols}) — "${escapeHtml(iss.preview)}${iss.preview.length > 40 ? '…' : ''}"</div>`).join('')}
+                        ${moreCount > 0 ? `<div class="text-[0.68rem] text-ink-500 italic">…and ${moreCount} more</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
         function analyzeAndPreviewExcel(rows, rawText, sourceName) {
             if (!rows || rows.length < 2 || rows[0].length < 2) return false;
 
@@ -2516,6 +2573,9 @@ Formatting discipline: write clean, valid Markdown. Never place "**" directly ag
             if (statsHtml === '') {
                 statsHtml = '<div class="text-ink-500 italic text-center py-2">No calculable columns found.</div>';
             }
+
+            const qualityIssues = checkRowQuality(headers, data);
+            statsHtml += renderRowQualityWarning(qualityIssues, data.length);
 
             pendingExcelData = rawText;
             pendingExcelMeta = { rows: data.length, cols: headers.length, source: sourceName || 'Pasted data' };
@@ -2814,7 +2874,8 @@ Formatting discipline: write clean, valid Markdown. Never place "**" directly ag
             }
 
             els.dpRaw.innerHTML = tableHtml;
-            els.dpStats.innerHTML = `<h4 class="font-semibold text-brand-400 flex items-center gap-2"><i class="ph-fill ph-check-circle"></i> Ready to send</h4><div class="text-ink-400 mt-1">${activeTab === 'pivot' ? 'Pivot table generated' : 'Filtered data saved'}<br>${activeSheet.rows.length} rows, ${activeSheet.headers.length} columns.</div>`;
+            const explorerQualityIssues = checkRowQuality(activeSheet.headers, activeSheet.rows);
+            els.dpStats.innerHTML = `<h4 class="font-semibold text-brand-400 flex items-center gap-2"><i class="ph-fill ph-check-circle"></i> Ready to send</h4><div class="text-ink-400 mt-1">${activeTab === 'pivot' ? 'Pivot table generated' : 'Filtered data saved'}<br>${activeSheet.rows.length} rows, ${activeSheet.headers.length} columns.</div>` + renderRowQualityWarning(explorerQualityIssues, activeSheet.rows.length);
             renderAttachmentChips();
 
             closeDataExplorer();
@@ -2835,10 +2896,15 @@ Formatting discipline: write clean, valid Markdown. Never place "**" directly ag
                 const stats = computeColumnStats(headers, rows);
                 const statsBlock = formatStatsForAI(stats, rows.length);
                 const mdTable = rowsToMarkdownTable(headers, rows);
+                const rowIssues = checkRowQuality(headers, rows);
+
+                const dataQualityNote = rowIssues.length > 0
+                    ? `\n\nNOTE: ${rowIssues.length} of ${rows.length} rows have a different number of columns than the header (misaligned/ragged data — likely a missing delimiter or dropped field in the source). Row numbers affected: ${rowIssues.slice(0, 10).map(i => i.rowNumber).join(', ')}${rowIssues.length > 10 ? ', …' : ''}. Do not silently guess or merge fields for these rows — call out the ambiguity explicitly in your response rather than presenting a guessed value as fact.\n`
+                    : '';
 
                 const sheetContext =
                     `\n\n### Attached Spreadsheet Data (${pendingExcelMeta.source}) ###\n\n` +
-                    `${statsBlock}\n` +
+                    `${statsBlock}${dataQualityNote}\n` +
                     `Full data as a markdown table:\n\n${mdTable}`;
 
                 finalPayload = (text ? text : "Please analyze this attached spreadsheet data.") +
