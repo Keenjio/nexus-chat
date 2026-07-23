@@ -1054,8 +1054,8 @@ Formatting discipline: write clean, valid Markdown. Never place "**" directly ag
         function renderDataTableHtml(headers, rows, opts = {}) {
             const maxRows = opts.maxRows || rows.length;
             const shown = rows.slice(0, maxRows);
-            let html = '<div class="overflow-x-auto custom-scrollbar rounded-lg border border-ink-700 my-1">';
-            html += '<table class="w-full text-xs text-left text-ink-300 border-collapse">';
+            let html = '<div class="overflow-x-auto custom-scrollbar rounded-lg border border-ink-700 my-1 max-w-full">';
+            html += '<table class="text-xs text-left text-ink-300 border-collapse" style="width: max-content; min-width: 100%;">';
             html += '<thead><tr class="bg-ink-800 border-b border-ink-700 sticky top-0">';
             headers.forEach(h => {
                 html += `<th class="px-2.5 py-1.5 font-semibold text-ink-100 border-r border-ink-700/50 whitespace-nowrap">${escapeHtml(String(h))}</th>`;
@@ -1065,7 +1065,7 @@ Formatting discipline: write clean, valid Markdown. Never place "**" directly ag
                 html += '<tr class="hover:bg-ink-800/40 transition-colors">';
                 headers.forEach((h, i) => {
                     const cell = row[i] != null ? String(row[i]) : '';
-                    html += `<td class="px-2.5 py-1.5 border-r border-ink-700/50 whitespace-nowrap" title="${escapeHtml(cell)}">${escapeHtml(cell)}</td>`;
+                    html += `<td class="px-2.5 py-1.5 border-r border-ink-700/50 whitespace-nowrap max-w-[220px] overflow-hidden text-ellipsis" title="${escapeHtml(cell)}">${escapeHtml(cell)}</td>`;
                 });
                 html += '</tr>';
             });
