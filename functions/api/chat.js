@@ -1,7 +1,7 @@
 const NVIDIA_NIM_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, X-OpenRouter-Key',
+  'Access-Control-Allow-Headers': 'Content-Type, X-NVIDIA-Key',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 function json(body, status) {
@@ -15,12 +15,10 @@ export function onRequestOptions() {
 }
 export async function onRequestPost(context) {
   const { request } = context;
-  // NOTE: the header name X-OpenRouter-Key is kept as-is (rather than renamed
-  // to X-NVIDIA-Key) so the existing front-end fetch() calls in index.html
-  // don't need to change at all — this is purely a backend routing swap.
-  // The value itself is now expected to be an NVIDIA NIM key (starts with
-  // "nvapi-"), not an OpenRouter key.
-  const apiKey = request.headers.get('X-OpenRouter-Key');
+  // The client sends the NVIDIA NIM API key (starts with "nvapi-") in this
+  // custom header rather than a standard Authorization header, so it never
+  // collides with any auth the hosting platform itself might apply.
+  const apiKey = (request.headers.get('X-NVIDIA-Key') || '').trim();
   if (!apiKey) return json({ error: { message: 'Missing API key' } }, 400);
   let body;
   try {
