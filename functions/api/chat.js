@@ -14,11 +14,20 @@ export function onRequestOptions() {
   return new Response(null, { status: 204, headers: corsHeaders });
 }
 export async function onRequestPost(context) {
-  const { request } = context;
+  const { request, env } = context;
   // The client sends the NVIDIA NIM API key (starts with "nvapi-") in this
   // custom header rather than a standard Authorization header, so it never
   // collides with any auth the hosting platform itself might apply.
-  const apiKey = (request.headers.get('X-NVIDIA-Key') || '').trim();
+  //
+  // If the client didn't send one (Settings → API key left blank), fall back
+  // to a key configured server-side via environment variable — set this in
+  // your hosting platform's dashboard (e.g. Cloudflare Pages → Settings →
+  // Environment Variables → NVIDIA_API_KEY), NOT in this file. This keeps
+  // the key out of the deployed HTML/JS entirely, so visitors viewing page
+  // source or dev tools never see it — only requests that pass through this
+  // server-side function use it.
+  const clientKey = (request.headers.get('X-NVIDIA-Key') || '').trim();
+  const apiKey = clientKey || (env.NVIDIA_API_KEY || '').trim();
   if (!apiKey) return json({ error: { message: 'Missing API key' } }, 400);
   let body;
   try {
