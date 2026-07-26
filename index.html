@@ -603,9 +603,9 @@
                 <div id="settings-tab-general" class="settings-tab-panel space-y-5">
                     <div>
                         <label class="block text-sm font-medium text-ink-300 mb-1">NVIDIA NIM API key</label>
-                        <input type="password" id="setting-api-key" class="w-full bg-ink-950 border border-ink-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-brand-500 text-white" placeholder="nvapi-..." oninput="updateApiKeyStatus()">
+                        <input type="password" id="setting-api-key" class="w-full bg-ink-950 border border-ink-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-brand-500 text-white" placeholder="nvapi-... (or paste a whole code snippet)" oninput="updateApiKeyStatus()" onpaste="handleApiKeyPaste(event)">
                         <div id="api-key-status" class="mt-1.5 text-[0.7rem] font-mono"></div>
-                        <p class="text-xs text-ink-500 mt-1.5">Required. Get a free key at <a href="https://build.nvidia.com" target="_blank" rel="noopener" class="text-brand-400 hover:underline">build.nvidia.com</a> — open any model card and click "Get API Key". Stored only in this browser's localStorage and relayed to NVIDIA through this site's own backend function, never logged or stored anywhere. <strong class="text-ink-300">You must click "Save changes" below for the key to take effect</strong> — closing this panel any other way (X, Escape, clicking outside) discards unsaved changes.</p>
+                        <p class="text-xs text-ink-500 mt-1.5">Required. Get a free key at <a href="https://build.nvidia.com" target="_blank" rel="noopener" class="text-brand-400 hover:underline">build.nvidia.com</a> — open any model card and click "Get API Key". You can also paste a whole Python/LangChain code snippet here (like the one on a model's page) and it'll pull out the key and model automatically. Stored only in this browser's localStorage and relayed to NVIDIA through this site's own backend function, never logged or stored anywhere. <strong class="text-ink-300">You must click "Save changes" below for the key to take effect</strong> — closing this panel any other way (X, Escape, clicking outside) discards unsaved changes.</p>
                     </div>
 
                     <div class="bg-ink-950 border border-ink-700 rounded-xl p-4 space-y-3">
@@ -1575,6 +1575,54 @@ Formatting discipline: write clean, valid Markdown. Never place "**" directly ag
         /* ============================================================
            6. SETTINGS MODAL
            ============================================================ */
+        // ------------------------------------------------------------------
+        // Lets someone paste a whole code snippet (like the Python/LangChain
+        // examples NVIDIA shows on each model's build.nvidia.com page) into
+        // the API key field, and pulls out just the key and model instead of
+        // dumping the raw snippet in. Handles the common quoting styles for
+        // both a bare "api_key=" / "model=" assignment (Python, most SDKs)
+        // and a JSON-style "api_key": "..." (some cURL/JSON examples).
+        // Falls through to normal paste behavior if nothing snippet-like is
+        // detected, so pasting a plain key still works exactly as before.
+        // ------------------------------------------------------------------
+        function handleApiKeyPaste(event) {
+            const pasted = (event.clipboardData || window.clipboardData).getData('text');
+            if (!pasted) return;
+
+            // Only intervene if this looks like more than just a bare key —
+            // a real snippet has multiple lines or explicit key=value syntax.
+            // Handles both Python-style (api_key="...") and JSON-style
+            // ("api_key": "...") quoting around the field name itself.
+            const looksLikeSnippet = pasted.includes('\n') || /["']?api_key["']?\s*[:=]/i.test(pasted) || /["']?\bmodel["']?\s*[:=]/i.test(pasted);
+            if (!looksLikeSnippet) return; // let the default paste happen normally
+
+            event.preventDefault();
+
+            const keyMatch = pasted.match(/["']?api_key["']?\s*[:=]\s*["']([^"']+)["']/i);
+            const modelMatch = pasted.match(/["']?\bmodel["']?\s*[:=]\s*["']([^"']+)["']/i);
+
+            const foundKey = keyMatch ? keyMatch[1].trim() : null;
+            const foundModel = modelMatch ? modelMatch[1].trim() : null;
+
+            if (!foundKey && !foundModel) {
+                showToast('Could not find an API key or model in that paste', 'ph-warning', 'text-rose-400');
+                return;
+            }
+
+            if (foundKey) {
+                document.getElementById('setting-api-key').value = foundKey;
+                updateApiKeyStatus();
+            }
+            if (foundModel) {
+                document.getElementById('setting-model').value = foundModel;
+            }
+
+            const parts = [];
+            if (foundKey) parts.push('API key');
+            if (foundModel) parts.push(`model (${foundModel})`);
+            showToast(`Extracted ${parts.join(' and ')} from snippet`, 'ph-check-circle');
+        }
+
         function updateApiKeyStatus() {
             const statusEl = document.getElementById('api-key-status');
             if (!statusEl) return;
@@ -3193,13 +3241,12 @@ Formatting discipline: write clean, valid Markdown. Never place "**" directly ag
             const chat = chats.find(c => c.id === currentChatId);
             if (!chat) return;
 
-            if (!settings.apiKey || !settings.apiKey.trim()) {
-                appendMessageUI('assistant', renderMessageText(
-                    "⚠️ No API key set. Open **Settings → API Key** and paste your own NVIDIA NIM key (get one free at build.nvidia.com — open any model card and click \"Get API Key\"). It's stored only in your browser, never sent anywhere but NVIDIA."
-                ), false, chat.messages.length);
-                scrollToBottom(true);
-                return;
-            }
+            // NOTE: no client-side block here even if settings.apiKey is empty.
+            // The backend may have its own server-side fallback key configured
+            // (see chat.js — env.NVIDIA_API_KEY), which the client has no way to
+            // know about in advance. If neither a client key nor a server
+            // fallback exists, the backend's own "Missing API key" response
+            // surfaces through the normal error-handling path below instead.
 
             isStreaming = true;
             els.sendBtn.disabled = true;
@@ -3392,11 +3439,23 @@ Formatting discipline: write clean, valid Markdown. Never place "**" directly ag
                     let finalResponseText = botResponseText;
                     let wasVerifierCorrected = false;
 
+                    // Show the completed response immediately — don't wipe it while
+                    // verifying. Previously this replaced the fully-generated text
+                    // with a bare spinner, which looked like generation had
+                    // restarted from scratch rather than a quick double-check of
+                    // an answer the person could already read.
+                    botBubble.innerHTML = renderMessageText(finalResponseText);
+                    applyKaTeX(botBubble);
+
                     if (settings.verifierEnabled) {
                         const lastUserMsg = [...chat.messages].reverse().find(m => m.role === 'user');
                         const originalRequest = lastUserMsg ? stripSheetMarker(lastUserMsg.content) : '';
 
-                        botBubble.innerHTML = `<div class="inline-flex items-center gap-2 text-xs text-brand-300 bg-brand-500/10 border border-brand-500/20 rounded-full px-3 py-1.5"><i class="ph ph-shield-check animate-pulse"></i> Checking response…</div>`;
+                        const checkingIndicator = document.createElement('div');
+                        checkingIndicator.className = 'inline-flex items-center gap-2 text-xs text-brand-300 bg-brand-500/10 border border-brand-500/20 rounded-full px-3 py-1.5 mt-2';
+                        checkingIndicator.innerHTML = '<i class="ph ph-shield-check animate-pulse"></i> Double-checking formatting…';
+                        botBubble.appendChild(checkingIndicator);
+                        scrollToBottom();
 
                         // The primary generation's abortController is already resolved
                         // by this point, so clicking "Stop generating" during this
