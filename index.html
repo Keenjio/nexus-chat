@@ -551,7 +551,9 @@
 
   function renderMarkdown(src){
     const stash = [];
-    let s = src.replace(/\$\$([\s\S]+?)\$\$/g, (m, tex) => { stash.push({disp:true, tex}); return '\u0000LX' + (stash.length-1) + '\u0000'; });
+    let s = src.replace(/\\\[([\s\S]+?)\\\]/g, (m, tex) => { stash.push({disp:true, tex}); return '\u0000LX' + (stash.length-1) + '\u0000'; });
+    s = s.replace(/\\\(([\s\S]+?)\\\)/g, (m, tex) => { stash.push({disp:false, tex}); return '\u0000LX' + (stash.length-1) + '\u0000'; });
+    s = s.replace(/\$\$([\s\S]+?)\$\$/g, (m, tex) => { stash.push({disp:true, tex}); return '\u0000LX' + (stash.length-1) + '\u0000'; });
     s = s.replace(/\$([^\$\n]+?)\$/g, (m, tex) => { stash.push({disp:false, tex}); return '\u0000LX' + (stash.length-1) + '\u0000'; });
 
     const codeStash = [];
@@ -608,7 +610,9 @@
         renderMathInElement(el, {
           delimiters: [
             {left:'$$', right:'$$', display:true},
-            {left:'$', right:'$', display:false}
+            {left:'$', right:'$', display:false},
+            {left:'\\[', right:'\\]', display:true},
+            {left:'\\(', right:'\\)', display:false}
           ],
           throwOnError:false
         });
