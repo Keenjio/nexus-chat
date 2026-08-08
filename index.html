@@ -90,6 +90,25 @@
   .icon-btn{background:none;border:none;color:var(--text-mid);width:32px;height:32px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;transition:background .15s,color .15s;}
   .icon-btn:hover{color:var(--text-hi);background:var(--bg-1);}
 
+  .advanced-toggle{display:flex;align-items:center;gap:7px;background:var(--bg-1);border:1px solid var(--line);color:var(--text-mid);font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;padding:6px 13px 6px 11px;border-radius:20px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;}
+  .advanced-toggle .adot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);flex:none;transition:background .15s,box-shadow .15s;}
+  .advanced-toggle.on{color:var(--nvidia);border-color:rgba(16,163,127,.4);background:var(--nvidia-glow);}
+  .advanced-toggle.on .adot{background:var(--nvidia);box-shadow:0 0 7px var(--nvidia);}
+  .advanced-toggle:hover{border-color:var(--text-lo);}
+
+  .branch-switch{display:flex;align-items:center;gap:4px;margin-top:8px;}
+  .branch-nav{background:var(--bg-1);border:1px solid var(--line);color:var(--text-mid);width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s;}
+  .branch-nav:hover:not(:disabled){color:var(--text-hi);border-color:var(--text-lo);}
+  .branch-nav:disabled{opacity:.3;cursor:not-allowed;}
+  .branch-label{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-faint);min-width:32px;text-align:center;}
+
+  .branch-new-btn{display:inline-flex;align-items:center;gap:5px;margin-top:10px;background:none;border:1px solid var(--line);color:var(--text-faint);font-family:'Inter',sans-serif;font-size:11.5px;font-weight:500;padding:5px 10px;border-radius:14px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;opacity:0;}
+  .msg.assistant:hover .branch-new-btn{opacity:1;}
+  .branch-new-btn:hover{color:var(--text-hi);border-color:var(--text-lo);background:var(--bg-1);}
+
+  .stream-caret{display:inline-block;width:2px;height:1em;background:var(--text-hi);vertical-align:text-bottom;margin-left:1px;animation:caretblink 1s step-end infinite;}
+  @keyframes caretblink{0%,100%{opacity:1;}50%{opacity:0;}}
+
   .thread{flex:1;overflow-y:auto;padding:0 20px 16px;}
   .thread-inner{max-width:720px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:0;min-height:100%;padding-top:24px;}
 
@@ -291,6 +310,10 @@
   <div class="main">
     <div class="topbar">
       <div class="spacer"></div>
+      <button type="button" class="advanced-toggle" id="advancedToggle" title="Advanced mode: deeper, expert-level answers for this chat">
+        <span class="adot"></span>
+        Advanced
+      </button>
     </div>
 
     <div class="thread" id="thread">
@@ -532,6 +555,7 @@
     settingsBtn: $('settingsBtn'), topSettingsBtn: $('topSettingsBtn'),
     providerBadge: $('providerBadge'), topModelName: $('topModelName'),
     thread: $('thread'), threadInner: $('threadInner'), emptyState: $('emptyState'),
+    advancedToggle: $('advancedToggle'),
     pulseTop: $('pulseTop'), pulseBottom: $('pulseBottom'),
     messageInput: $('messageInput'), sendBtn: $('sendBtn'), charCount: $('charCount'),
     toast: $('toast'),
@@ -621,8 +645,33 @@
   }
 
   /* ---------------- conversations ---------------- */
+  function uid(){ return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
   function newConversationObj(){
-    return { id: 'c' + Date.now() + Math.random().toString(36).slice(2,7), title: 'New chat', provider: applied.provider, model: applied.activeModel[applied.provider] || DEFAULT_MODELS[applied.provider], messages: [], updatedAt: Date.now() };
+    return {
+      id: 'c' + Date.now() + Math.random().toString(36).slice(2,7),
+      title: 'New chat',
+      provider: applied.provider,
+      model: applied.activeModel[applied.provider] || DEFAULT_MODELS[applied.provider],
+      messages: [],       // flat store: {id, parentId, role, content, meta}
+      activeLeaf: null,   // id of the message at the tip of the currently-viewed branch
+      advanced: true,     // per-chat Advanced mode, default ON
+      updatedAt: Date.now()
+    };
+  }
+
+  // path from root to a given leaf id (inclusive), following parentId chain
+  function pathTo(convo, leafId){
+    const byId = {}; convo.messages.forEach(m => byId[m.id] = m);
+    const path = [];
+    let cur = leafId ? byId[leafId] : null;
+    while (cur) { path.unshift(cur); cur = cur.parentId ? byId[cur.parentId] : null; }
+    return path;
+  }
+
+  // children of a given message id (siblings share the same parentId)
+  function childrenOf(convo, parentId){
+    return convo.messages.filter(m => m.parentId === parentId);
   }
 
   function getActive(){ return conversations.find(c => c.id === activeId) || null; }
@@ -662,6 +711,7 @@
     renderThreadFromActive();
     renderConvoList();
     syncTopbar();
+    syncAdvancedToggle();
   }
 
   function deleteConversation(id){
@@ -671,6 +721,7 @@
     renderConvoList();
     renderThreadFromActive();
     syncTopbar();
+    syncAdvancedToggle();
     showToast('Conversation deleted');
   }
 
@@ -693,12 +744,14 @@
     renderConvoList();
     renderThreadFromActive();
     syncTopbar();
+    syncAdvancedToggle();
     els.messageInput.focus();
     if (window.innerWidth <= 880) closeSidebar();
   });
   els.searchInput.addEventListener('input', renderConvoList);
 
   function renderThreadFromActive(){
+    streamGen++; // invalidate any in-flight simulated stream targeting now-replaced DOM
     els.threadInner.innerHTML = '';
     const c = getActive();
     if (!c || !c.messages.length) {
@@ -707,14 +760,77 @@
       return;
     }
     els.emptyState.style.display = 'none';
-    c.messages.forEach(m => renderBubble(m.role, m.content, { provider: c.provider, meta: m.meta }));
+    const leaf = c.activeLeaf || c.messages[c.messages.length - 1].id;
+    const path = pathTo(c, leaf);
+    path.forEach(m => {
+      const { wrap } = renderBubble(m.role, m.content, { provider: c.provider, meta: m.meta, msgId: m.id });
+      // branch switcher: if this message has siblings (other children of same parent), show 1/N controls
+      const siblings = childrenOf(c, m.parentId);
+      if (siblings.length > 1) {
+        const idx = siblings.findIndex(s => s.id === m.id);
+        addBranchSwitcher(wrap, c, siblings, idx);
+      }
+      // branch button on assistant messages, to start a new branch from here
+      if (m.role === 'assistant') addBranchButton(wrap, c, m.id);
+    });
     els.thread.scrollTop = els.thread.scrollHeight;
+  }
+
+  function addBranchSwitcher(wrap, convo, siblings, idx){
+    const row = document.createElement('div');
+    row.className = 'branch-switch';
+    const prev = document.createElement('button');
+    prev.type = 'button'; prev.className = 'branch-nav'; prev.innerHTML = '‹';
+    prev.disabled = idx <= 0;
+    prev.addEventListener('click', () => jumpToBranch(convo, siblings[idx - 1].id));
+    const label = document.createElement('span');
+    label.className = 'branch-label'; label.textContent = (idx + 1) + ' / ' + siblings.length;
+    const next = document.createElement('button');
+    next.type = 'button'; next.className = 'branch-nav'; next.innerHTML = '›';
+    next.disabled = idx >= siblings.length - 1;
+    next.addEventListener('click', () => jumpToBranch(convo, siblings[idx + 1].id));
+    row.appendChild(prev); row.appendChild(label); row.appendChild(next);
+    wrap.querySelector('.bubble-wrap').appendChild(row);
+  }
+
+  function addBranchButton(wrap, convo, msgId){
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'branch-new-btn'; btn.title = 'Branch a new thread from here';
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 3v10a4 4 0 004 4h4M14 13l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Branch';
+    btn.addEventListener('click', () => startBranch(convo, msgId));
+    wrap.querySelector('.bubble-wrap').appendChild(btn);
+  }
+
+  // find the deepest leaf that descends from a given node, following the "first child" by default
+  function deepestLeaf(convo, nodeId){
+    let cur = nodeId;
+    while (true) {
+      const kids = childrenOf(convo, cur);
+      if (!kids.length) return cur;
+      cur = kids[0].id;
+    }
+  }
+
+  function jumpToBranch(convo, siblingId){
+    convo.activeLeaf = deepestLeaf(convo, siblingId);
+    persistAll();
+    renderThreadFromActive();
+  }
+
+  function startBranch(convo, fromMsgId){
+    // set active leaf to the branch point; next sent message becomes a new sibling branch
+    convo.activeLeaf = fromMsgId;
+    persistAll();
+    renderThreadFromActive();
+    els.messageInput.focus();
+    showToast('New branch started — send a message to continue it');
   }
 
   function renderBubble(role, text, opts){
     opts = opts || {};
     const wrap = document.createElement('div');
     wrap.className = 'msg ' + role + (opts.provider ? ' provider-' + opts.provider : '');
+    if (opts.msgId) wrap.dataset.msgId = opts.msgId;
     const avatar = document.createElement('div');
     avatar.className = 'avatar';
     avatar.textContent = role === 'user' ? 'YOU' : (opts.provider === 'openrouter' ? 'OR' : 'NV');
@@ -744,7 +860,52 @@
     return { wrap, bubble };
   }
 
+  /* ---------------- simulated streaming reveal ---------------- */
+  let streamGen = 0;
+  // Reveals `fullText` into `bubbleEl` progressively so it feels like it's generating live,
+  // even though we already have the complete response from /api/chat.
+  function streamReveal(bubbleEl, fullText, onDone){
+    const myGen = ++streamGen;
+    bubbleEl.classList.remove('error-bubble');
+    // Split into small chunks (word-ish) for a natural typing cadence
+    const chunks = fullText.match(/\S+\s*|\s+/g) || [fullText];
+    let i = 0;
+    let acc = '';
+    const CHUNK_MS = 16; // reveal speed
+    const STEP = 1; // chunks per tick
+    function tick(){
+      if (myGen !== streamGen) return; // superseded by a new send/switch — abandon this stream
+      if (i >= chunks.length) {
+        bubbleEl.innerHTML = renderMarkdown(fullText);
+        renderKatexIn(bubbleEl);
+        if (onDone) onDone();
+        return;
+      }
+      for (let k = 0; k < STEP && i < chunks.length; k++, i++) acc += chunks[i];
+      // render partial markdown live; safe since renderMarkdown degrades gracefully on incomplete input
+      bubbleEl.innerHTML = renderMarkdown(acc) + '<span class="stream-caret"></span>';
+      els.thread.scrollTop = els.thread.scrollHeight;
+      setTimeout(tick, CHUNK_MS);
+    }
+    tick();
+  }
+
   /* ---------------- topbar / provider sync ---------------- */
+  function syncAdvancedToggle(){
+    const c = getActive();
+    const on = c ? (c.advanced !== false) : true;
+    if (els.advancedToggle) els.advancedToggle.classList.toggle('on', on);
+  }
+  if (els.advancedToggle) {
+    els.advancedToggle.addEventListener('click', () => {
+      const c = ensureActiveConversation();
+      c.advanced = !(c.advanced !== false);
+      persistAll();
+      syncAdvancedToggle();
+      showToast(c.advanced ? 'Advanced mode on for this chat' : 'Advanced mode off for this chat');
+    });
+  }
+
   function syncTopbar(){
     const p = applied.provider;
     if (els.providerBadge) {
@@ -783,6 +944,8 @@
     showToast._t = setTimeout(() => els.toast.classList.remove('show'), 2600);
   }
 
+  const ADVANCED_DIRECTIVE = "Act as an expert-level mentor teaching a capable, motivated learner who wants true mastery, not a summary. For every answer: go deep, not just wide — explain the underlying mechanics, the 'why' behind rules of thumb, and where beginners get it wrong. Use precise technical vocabulary but define new terms the first time you use them. Prefer worked examples, edge cases, and comparisons to alternatives over generic definitions. When relevant, show the math/formula/code explicitly. Structure longer answers with clear headings. Do not pad with filler or excessive caveats — write like a top practitioner explaining this to a sharp peer who wants to actually get good at it.";
+
   let busy = false;
   async function sendMessage(){
     if (busy) return;
@@ -795,11 +958,16 @@
     const convo = ensureActiveConversation();
     convo.provider = provider; convo.model = model;
     if (convo.messages.length === 0) convo.title = text.slice(0, 46) + (text.length > 46 ? '…' : '');
-    convo.messages.push({ role: 'user', content: text });
+
+    // new user message attaches under the current active leaf (branch point)
+    const parentId = convo.activeLeaf || (convo.messages.length ? convo.messages[convo.messages.length - 1].id : null);
+    const userMsg = { id: uid(), parentId, role: 'user', content: text };
+    convo.messages.push(userMsg);
+    convo.activeLeaf = userMsg.id;
     convo.updatedAt = Date.now();
 
     els.emptyState.style.display = 'none';
-    renderBubble('user', text);
+    renderBubble('user', text, { msgId: userMsg.id });
     els.messageInput.value = '';
     els.messageInput.style.height = 'auto';
     if (els.charCount) els.charCount.textContent = '0';
@@ -811,8 +979,12 @@
     els.sendBtn.disabled = true;
 
     const payloadMessages = [];
-    if (applied.system.trim()) payloadMessages.push({ role: 'system', content: applied.system.trim() });
-    payloadMessages.push(...convo.messages.map(m => ({ role: m.role, content: m.content })));
+    const sys = [];
+    if (applied.system.trim()) sys.push(applied.system.trim());
+    if (convo.advanced !== false) sys.push(ADVANCED_DIRECTIVE);
+    if (sys.length) payloadMessages.push({ role: 'system', content: sys.join('\n\n') });
+    // walk the active branch path (not the whole flat array) for conversation context
+    pathTo(convo, userMsg.id).forEach(m => payloadMessages.push({ role: m.role, content: m.content }));
 
     const headers = { 'Content-Type': 'application/json', 'X-Provider': provider };
     if (apiKey) headers[HEADER_NAMES[provider]] = apiKey;
@@ -831,17 +1003,23 @@
         return;
       }
       const reply = data?.choices?.[0]?.message?.content ?? '(empty response)';
-      pending.bubble.innerHTML = renderMarkdown(reply);
-      renderKatexIn(pending.bubble);
-      convo.messages.push({ role: 'assistant', content: reply });
+      const asstMsg = { id: uid(), parentId: userMsg.id, role: 'assistant', content: reply };
+      convo.messages.push(asstMsg);
+      convo.activeLeaf = asstMsg.id;
       convo.updatedAt = Date.now();
       persistAll();
       renderConvoList();
+
+      streamReveal(pending.bubble, reply, () => {
+        busy = false;
+        els.sendBtn.disabled = false;
+        renderThreadFromActive(); // re-render to attach branch button now that it's committed
+        els.messageInput.focus();
+      });
     } catch (err) {
       pending.bubble.className = 'bubble error-bubble';
       pending.bubble.textContent = 'Network error: ' + err.message;
       showToast('Could not reach /api/chat', true);
-    } finally {
       busy = false;
       els.sendBtn.disabled = false;
       els.thread.scrollTop = els.thread.scrollHeight;
@@ -1043,6 +1221,7 @@
     applied = JSON.parse(JSON.stringify(draft));
     persistAll();
     syncTopbar();
+    syncAdvancedToggle();
     document.body.setAttribute('data-theme', applied.theme);
     document.body.classList.toggle('compact', applied.compact);
     const c = getActive();
@@ -1057,6 +1236,7 @@
   renderConvoList();
   renderThreadFromActive();
   syncTopbar();
+  syncAdvancedToggle();
 })();
 </script>
 </body>
