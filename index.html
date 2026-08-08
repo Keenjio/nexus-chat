@@ -94,7 +94,57 @@
   .advanced-toggle .adot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);flex:none;transition:background .15s,box-shadow .15s;}
   .advanced-toggle.on{color:var(--nvidia);border-color:rgba(16,163,127,.4);background:var(--nvidia-glow);}
   .advanced-toggle.on .adot{background:var(--nvidia);box-shadow:0 0 7px var(--nvidia);}
+  .advanced-toggle.mastery{color:var(--warn);border-color:rgba(232,176,75,.45);background:rgba(232,176,75,.13);}
+  .advanced-toggle.mastery .adot{background:var(--warn);box-shadow:0 0 7px var(--warn);}
+  .advanced-toggle.research{color:var(--danger);border-color:rgba(242,85,90,.45);background:rgba(242,85,90,.13);}
+  .advanced-toggle.research .adot{background:var(--danger);box-shadow:0 0 7px var(--danger);}
   .advanced-toggle:hover{border-color:var(--text-lo);}
+  .advanced-toggle .alevel{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.03em;opacity:.7;margin-left:1px;}
+
+  .side-toggle{display:flex;align-items:center;gap:7px;background:var(--bg-1);border:1px solid var(--line);color:var(--text-mid);font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;padding:6px 13px 6px 11px;border-radius:20px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;margin-right:8px;}
+  .side-toggle .ddot{width:9px;height:9px;border-radius:50%;flex:none;background:conic-gradient(var(--nvidia) 0 50%, var(--openrouter) 50% 100%);opacity:.4;transition:opacity .15s,box-shadow .15s;}
+  .side-toggle.on{color:var(--text-hi);border-color:var(--text-lo);background:var(--bg-2);}
+  .side-toggle.on .ddot{opacity:1;box-shadow:0 0 7px rgba(171,104,255,.45);}
+  .side-toggle:hover{border-color:var(--text-lo);}
+
+  /* ============ SIDE CHAT — a small independent scratch conversation next to the main thread,
+     for asking a quick clarifying question without derailing the main chat ============ */
+  .body-row{flex:1;display:flex;min-height:0;position:relative;}
+  .thread-col{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;}
+
+  .side-panel{width:0;flex:none;overflow:hidden;display:flex;flex-direction:column;border-left:1px solid var(--line);background:var(--bg-1);transition:width .2s ease;}
+  .side-panel.open{width:340px;}
+  @media (max-width:880px){
+    .side-panel{position:fixed;top:0;right:0;bottom:0;width:0;z-index:30;box-shadow:-14px 0 34px rgba(0,0,0,.45);}
+    .side-panel.open{width:min(360px,88vw);}
+  }
+  .side-scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:29;}
+  .side-scrim.show{display:block;}
+  @media (min-width:881px){.side-scrim{display:none !important;}}
+
+  .side-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 14px;border-bottom:1px solid var(--line);flex:none;}
+  .side-panel-head .stitle{display:flex;align-items:center;gap:7px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text-hi);white-space:nowrap;}
+  .side-panel-head .stitle::before{content:'';width:7px;height:7px;border-radius:50%;flex:none;background:conic-gradient(var(--nvidia) 0 50%, var(--openrouter) 50% 100%);}
+  .side-panel-head .side-actions{display:flex;align-items:center;gap:2px;}
+
+  .side-thread{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:14px;}
+  .side-empty{color:var(--text-lo);font-size:12.5px;line-height:1.65;padding:6px 2px;}
+  .side-msg .role-label{font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);margin-bottom:4px;}
+  .side-msg.user .role-label{color:var(--text-mid);}
+  .side-msg.assistant .role-label{color:var(--nvidia);}
+  .side-msg .bubble{font-size:13.5px;line-height:1.62;}
+  .side-msg .bubble p{margin:0 0 10px;}
+  .side-msg .bubble p:last-child{margin-bottom:0;}
+
+  .side-composer{display:flex;align-items:flex-end;gap:8px;padding:11px 12px;border-top:1px solid var(--line);flex:none;}
+  .side-composer textarea{flex:1;background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;color:var(--text-hi);font-family:'Inter',sans-serif;font-size:13px;line-height:1.45;resize:none;max-height:110px;outline:none;transition:border-color .15s;}
+  .side-composer textarea:focus{border-color:var(--text-lo);}
+  .side-composer textarea::placeholder{color:var(--text-lo);}
+  .side-send-btn{background:var(--bg-2);border:1px solid var(--line);color:var(--text-mid);width:30px;height:30px;border-radius:9px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s;}
+  .side-send-btn:hover:not(:disabled){color:var(--text-hi);border-color:var(--text-lo);}
+  .side-send-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .side-panel-hint{padding:9px 14px;font-size:11px;color:var(--text-faint);border-top:1px solid var(--line);line-height:1.5;}
+
 
   .branch-switch{display:flex;align-items:center;gap:4px;margin-top:8px;}
   .branch-nav{background:var(--bg-1);border:1px solid var(--line);color:var(--text-mid);width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s;}
@@ -310,12 +360,18 @@
   <div class="main">
     <div class="topbar">
       <div class="spacer"></div>
-      <button type="button" class="advanced-toggle" id="advancedToggle" title="Advanced mode: deeper, expert-level answers for this chat">
+      <button type="button" class="side-toggle" id="dualToggle" title="Open a side chat — ask a quick side question without derailing this conversation">
+        <span class="ddot"></span>
+        Side chat
+      </button>
+      <button type="button" class="advanced-toggle" id="advancedToggle" title="Cycle teaching depth: Standard → Advanced → Mastery">
         <span class="adot"></span>
-        Advanced
+        <span id="advancedLabel">Advanced</span>
       </button>
     </div>
 
+    <div class="body-row" id="bodyRow">
+    <div class="thread-col">
     <div class="thread" id="thread">
       <div class="thread-inner" id="threadInner">
         <div class="empty" id="emptyState">
@@ -354,8 +410,35 @@
         </div>
       </div>
     </div>
+    </div>
+
+    <div class="side-panel" id="sidePanel">
+      <div class="side-panel-head">
+        <span class="stitle">Side chat</span>
+        <div class="side-actions">
+          <button type="button" class="icon-btn" id="sideClearBtn" title="Clear side chat" aria-label="Clear side chat">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button type="button" class="icon-btn" id="sideCloseBtn" title="Close side chat" aria-label="Close side chat">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M6 18L18 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="side-thread" id="sideThread">
+        <div class="side-empty" id="sideEmpty">Ask a quick side question here — like "what does that term mean?" — without adding it to the main conversation. The main chat so far is given to it as context, so it can help explain what's already been discussed.</div>
+      </div>
+      <div class="side-composer">
+        <textarea id="sideMessageInput" rows="1" placeholder="Ask a side question…"></textarea>
+        <button type="button" class="side-send-btn" id="sideSendBtn" aria-label="Send side question">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M12 5L6 11M12 5L18 11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="side-panel-hint">Doesn't touch the main conversation or its context.</div>
+    </div>
+    </div>
   </div>
 </div>
+<div class="side-scrim" id="sideScrim"></div>
 
 <!-- SETTINGS MODAL -->
 <div class="modal-overlay" id="modalOverlay">
@@ -519,6 +602,11 @@
   };
 
   let conversations = LS.get('nexus_conversations', []); // [{id,title,provider,model,messages:[],updatedAt}]
+  // migrate older saved chats that predate the side-chat feature
+  conversations.forEach(c => {
+    if (!Array.isArray(c.sideMessages)) c.sideMessages = [];
+    if (typeof c.sideOpen !== 'boolean') c.sideOpen = false;
+  });
   let activeId = LS.get('nexus_active_id', null);
   let draft = { // unsaved settings-modal state, applied to session config on Save
     provider: LS.get('nexus_provider', 'nvidia'),
@@ -555,7 +643,11 @@
     settingsBtn: $('settingsBtn'), topSettingsBtn: $('topSettingsBtn'),
     providerBadge: $('providerBadge'), topModelName: $('topModelName'),
     thread: $('thread'), threadInner: $('threadInner'), emptyState: $('emptyState'),
-    advancedToggle: $('advancedToggle'),
+    advancedToggle: $('advancedToggle'), advancedLabel: $('advancedLabel'), dualToggle: $('dualToggle'),
+    bodyRow: $('bodyRow'), sidePanel: $('sidePanel'), sideScrim: $('sideScrim'),
+    sideThread: $('sideThread'), sideEmpty: $('sideEmpty'),
+    sideMessageInput: $('sideMessageInput'), sideSendBtn: $('sideSendBtn'),
+    sideCloseBtn: $('sideCloseBtn'), sideClearBtn: $('sideClearBtn'),
     pulseTop: $('pulseTop'), pulseBottom: $('pulseBottom'),
     messageInput: $('messageInput'), sendBtn: $('sendBtn'), charCount: $('charCount'),
     toast: $('toast'),
@@ -655,7 +747,9 @@
       model: applied.activeModel[applied.provider] || DEFAULT_MODELS[applied.provider],
       messages: [],       // flat store: {id, parentId, role, content, meta}
       activeLeaf: null,   // id of the message at the tip of the currently-viewed branch
-      advanced: true,     // per-chat Advanced mode, default ON
+      teachLevel: 1,       // per-chat teaching depth: 0=Standard, 1=Advanced, 2=Mastery (default: Advanced)
+      sideOpen: false,       // whether the side-chat panel is open for this conversation
+      sideMessages: [],      // side chat: a small independent linear conversation (no branching)
       updatedAt: Date.now()
     };
   }
@@ -712,6 +806,7 @@
     renderConvoList();
     syncTopbar();
     syncAdvancedToggle();
+    syncDualToggle();
   }
 
   function deleteConversation(id){
@@ -722,6 +817,7 @@
     renderThreadFromActive();
     syncTopbar();
     syncAdvancedToggle();
+    syncDualToggle();
     showToast('Conversation deleted');
   }
 
@@ -745,6 +841,7 @@
     renderThreadFromActive();
     syncTopbar();
     syncAdvancedToggle();
+    syncDualToggle();
     els.messageInput.focus();
     if (window.innerWidth <= 880) closeSidebar();
   });
@@ -891,19 +988,170 @@
   }
 
   /* ---------------- topbar / provider sync ---------------- */
+  const TEACH_LEVELS = ['Standard', 'Advanced', 'Mastery', 'Research'];
+  // reads a conversation's teaching depth, migrating older saved chats that only had a boolean `advanced` flag
+  function getTeachLevel(c){
+    if (!c) return 1;
+    if (typeof c.teachLevel === 'number') return c.teachLevel;
+    return c.advanced === false ? 0 : 1;
+  }
   function syncAdvancedToggle(){
     const c = getActive();
-    const on = c ? (c.advanced !== false) : true;
-    if (els.advancedToggle) els.advancedToggle.classList.toggle('on', on);
+    const level = getTeachLevel(c);
+    if (!els.advancedToggle) return;
+    els.advancedToggle.classList.toggle('on', level === 1);
+    els.advancedToggle.classList.toggle('mastery', level === 2);
+    els.advancedToggle.classList.toggle('research', level === 3);
+    if (els.advancedLabel) els.advancedLabel.textContent = TEACH_LEVELS[level];
+    els.advancedToggle.title = level === 0
+      ? 'Standard mode — concise answers. Click to enable Advanced.'
+      : level === 1
+      ? 'Advanced mode: deeper, expert-level answers with worked examples. Click to enable Mastery.'
+      : level === 2
+      ? 'Mastery mode: full tutor-style breakdowns with worked examples, misconceptions, and self-check questions. Click to enable Research.'
+      : 'Research mode: graduate/practitioner-level rigor — formal reasoning, derivations, and frontier context. Click to return to Standard.';
   }
   if (els.advancedToggle) {
     els.advancedToggle.addEventListener('click', () => {
       const c = ensureActiveConversation();
-      c.advanced = !(c.advanced !== false);
+      const next = (getTeachLevel(c) + 1) % TEACH_LEVELS.length;
+      c.teachLevel = next;
+      delete c.advanced; // drop legacy field now that teachLevel is authoritative
       persistAll();
       syncAdvancedToggle();
-      showToast(c.advanced ? 'Advanced mode on for this chat' : 'Advanced mode off for this chat');
+      showToast(
+        next === 0 ? 'Standard mode — concise answers' :
+        next === 1 ? 'Advanced mode — deeper, expert-level answers' :
+        next === 2 ? 'Mastery mode — full tutor-style teaching for this chat' :
+                     'Research mode — graduate-level rigor for this chat'
+      );
     });
+  }
+
+  /* ---------------- side chat (independent scratch conversation) ---------------- */
+  function syncDualToggle(){
+    const c = getActive();
+    const open = !!(c && c.sideOpen);
+    if (els.dualToggle) els.dualToggle.classList.toggle('on', open);
+    if (els.sidePanel) els.sidePanel.classList.toggle('open', open);
+    if (els.sideScrim) els.sideScrim.classList.toggle('show', open && window.innerWidth <= 880);
+    if (open) renderSideThread();
+  }
+  function toggleSidePanel(force){
+    const c = ensureActiveConversation();
+    c.sideOpen = typeof force === 'boolean' ? force : !c.sideOpen;
+    persistAll();
+    syncDualToggle();
+    if (c.sideOpen && els.sideMessageInput) setTimeout(() => els.sideMessageInput.focus(), 180);
+  }
+  if (els.dualToggle) els.dualToggle.addEventListener('click', () => toggleSidePanel());
+  if (els.sideCloseBtn) els.sideCloseBtn.addEventListener('click', () => toggleSidePanel(false));
+  if (els.sideScrim) els.sideScrim.addEventListener('click', () => toggleSidePanel(false));
+  if (els.sideClearBtn) {
+    els.sideClearBtn.addEventListener('click', () => {
+      const c = getActive();
+      if (!c || !c.sideMessages.length) return;
+      if (!confirm('Clear the side chat?')) return;
+      c.sideMessages = [];
+      persistAll();
+      renderSideThread();
+      showToast('Side chat cleared');
+    });
+  }
+
+  function renderSideThread(){
+    const c = getActive();
+    if (!els.sideThread) return;
+    els.sideThread.innerHTML = '';
+    const msgs = (c && c.sideMessages) || [];
+    if (!msgs.length) {
+      const empty = document.createElement('div');
+      empty.className = 'side-empty';
+      empty.textContent = 'Ask a quick side question here — like "what does that term mean?" — without adding it to the main conversation. The main chat so far is given to it as context, so it can help explain what\'s already been discussed.';
+      els.sideThread.appendChild(empty);
+      return;
+    }
+    msgs.forEach(m => els.sideThread.appendChild(renderSideBubble(m.role, m.content)));
+    els.sideThread.scrollTop = els.sideThread.scrollHeight;
+  }
+
+  function renderSideBubble(role, text){
+    const wrap = document.createElement('div');
+    wrap.className = 'side-msg ' + role;
+    const label = document.createElement('div');
+    label.className = 'role-label';
+    label.textContent = role === 'user' ? 'You' : 'Answer';
+    wrap.appendChild(label);
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    if (role === 'user') bubble.textContent = text;
+    else { bubble.innerHTML = text ? renderMarkdown(text) : '<div class="typing"><span></span><span></span><span></span></div>'; renderKatexIn(bubble); }
+    wrap.appendChild(bubble);
+    return wrap;
+  }
+
+  els.sideMessageInput && els.sideMessageInput.addEventListener('input', () => {
+    els.sideMessageInput.style.height = 'auto';
+    els.sideMessageInput.style.height = Math.min(els.sideMessageInput.scrollHeight, 110) + 'px';
+  });
+  els.sideMessageInput && els.sideMessageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendSideMessage(); }
+  });
+  els.sideSendBtn && els.sideSendBtn.addEventListener('click', sendSideMessage);
+
+  let sideBusy = false;
+  async function sendSideMessage(){
+    if (sideBusy) return;
+    const text = els.sideMessageInput.value.trim();
+    if (!text) return;
+    const convo = ensureActiveConversation();
+    const provider = applied.provider;
+    const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
+    const apiKey = (applied.keys[provider] || '').trim();
+
+    convo.sideMessages.push({ id: uid(), role: 'user', content: text });
+    els.sideMessageInput.value = '';
+    els.sideMessageInput.style.height = 'auto';
+    persistAll();
+    renderSideThread();
+
+    const pendingEl = renderSideBubble('assistant', '');
+    els.sideThread.appendChild(pendingEl);
+    els.sideThread.scrollTop = els.sideThread.scrollHeight;
+    sideBusy = true;
+    els.sideSendBtn.disabled = true;
+
+    // ground the side chat in the main conversation so far, without touching the main thread itself
+    const mainPath = pathTo(convo, convo.activeLeaf);
+    const transcript = mainPath.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.content).join('\n\n');
+    const sys = buildSystemMessages(convo);
+    sys.push(mainPath.length
+      ? "The person is having a separate side conversation to ask quick clarifying questions about the main chat below, without adding those questions to the main chat itself. Use the transcript for context, and answer only the side question — keep it focused and brief unless asked to go deeper.\n\n--- Main conversation so far ---\n" + transcript
+      : "The person is using a side chat scratch space alongside their (currently empty) main conversation. Answer their question directly and concisely.");
+    const payloadMessages = [{ role: 'system', content: sys.join('\n\n') }];
+    convo.sideMessages.forEach(m => payloadMessages.push({ role: m.role, content: m.content }));
+
+    const headers = { 'Content-Type': 'application/json', 'X-Provider': provider };
+    if (apiKey) headers[HEADER_NAMES[provider]] = apiKey;
+
+    try {
+      const res = await fetch('/api/chat', { method: 'POST', headers, body: JSON.stringify({ model, messages: payloadMessages, stream: false }) });
+      const raw = await res.text();
+      let data; try { data = JSON.parse(raw); } catch { data = null; }
+      if (!res.ok) throw new Error((data && data.error && data.error.message) || raw || ('Request failed with status ' + res.status));
+      const reply = data?.choices?.[0]?.message?.content ?? '(empty response)';
+      convo.sideMessages.push({ id: uid(), role: 'assistant', content: reply });
+      persistAll();
+      renderSideThread();
+    } catch (err) {
+      pendingEl.querySelector('.bubble').className = 'bubble error-bubble';
+      pendingEl.querySelector('.bubble').textContent = 'Error: ' + err.message;
+      showToast('Side chat request failed', true);
+    } finally {
+      sideBusy = false;
+      els.sideSendBtn.disabled = false;
+      els.sideMessageInput.focus();
+    }
   }
 
   function syncTopbar(){
@@ -944,7 +1192,20 @@
     showToast._t = setTimeout(() => els.toast.classList.remove('show'), 2600);
   }
 
+  // Level 1 — Advanced: deeper, expert-level answers with real technical substance.
   const ADVANCED_DIRECTIVE = "Act as an expert-level mentor teaching a capable, motivated learner who wants true mastery, not a summary. For every answer: go deep, not just wide — explain the underlying mechanics, the 'why' behind rules of thumb, and where beginners get it wrong. Use precise technical vocabulary but define new terms the first time you use them. Prefer worked examples, edge cases, and comparisons to alternatives over generic definitions. When relevant, show the math/formula/code explicitly. Structure longer answers with clear headings. Do not pad with filler or excessive caveats — write like a top practitioner explaining this to a sharp peer who wants to actually get good at it.";
+
+  // Level 2 — Mastery: a full pedagogical framework layered on top of Advanced, optimized for
+  // durable understanding rather than a quick answer. Encodes worked-example teaching,
+  // misconception-checking, spaced retrieval, and active recall — standard techniques from
+  // cognitive science for learning that sticks.
+  const MASTERY_DIRECTIVE = ADVANCED_DIRECTIVE + "\n\nYou are now in Mastery teaching mode. The learner's goal is durable, transferable understanding, not just a correct-sounding answer, so teach deliberately using this framework, adapted to the question (skip sections that genuinely don't apply rather than forcing all of them):\n\n1. Core idea first — one or two sentences giving the essential concept in plain terms, before any jargon or formalism.\n2. Mechanism — explain *why* it works or *why* it's true, not just *that* it's true. Trace the causal chain or derivation; don't state conclusions as facts to be accepted.\n3. Worked example — walk through at least one concrete example step by step, showing intermediate work (calculations, code execution trace, or reasoning steps), not just the final result.\n4. Where it breaks / common misconceptions — name the specific mistake a learner is likely to make here, why it's tempting, and why it's wrong. This is often the highest-value part of the answer.\n5. How it connects — briefly place the idea in context: what it generalizes from, what it's a special case of, or what related concept it's easy to confuse it with.\n6. Check your understanding — end with one short, specific question that tests whether the learner actually grasped the mechanism (not a trivia recall question). Do not answer it yourself; let the learner attempt it first.\n\nUse headings for each stage on longer answers, but keep prose tight — depth should come from precision and worked detail, not from padding or repeating yourself. Calibrate technical level to what the learner's question implies about their current knowledge, and define any new term the first time it appears. If code, math, or a diagram would make the mechanism concrete, include it rather than describing it abstractly.";
+
+  // Level 3 — Research: the ceiling. Assumes a strong existing foundation and drops most
+  // beginner scaffolding in favor of formal rigor, primary-source grounding, and an honest
+  // account of what's actually unsettled — the way a domain expert would brief a colleague,
+  // not the way a textbook introduces a novice.
+  const RESEARCH_DIRECTIVE = ADVANCED_DIRECTIVE + "\n\nYou are now in Research teaching mode: graduate-seminar / practitioner-briefing rigor, for a learner who already has the prerequisites and wants the real structure of the field, not a simplified on-ramp. This mode trades gentle scaffolding for density and precision:\n\n1. State the claim precisely first, using correct formal/technical notation or terminology, not a plain-language paraphrase — assume the reader can look up an unfamiliar term but flag it in one clause if it's non-standard.\n2. Give the actual derivation, proof sketch, or mechanistic justification — not just the intuition pump. If a full derivation is long, give the key steps and state clearly which parts are being elided and why.\n3. Address the boundary conditions explicitly: under what assumptions does this hold, where does it degrade or fail, and what's the strongest known counterexample or edge case.\n4. Compare against the leading alternative approach or competing theory, and give a real reason one is preferred in which regime — not a vague pros/cons list.\n5. State what is actually settled vs. still contested or actively researched in this area, and where possible, point to the kind of primary source (paper, spec, dataset, proof) that would let the learner verify the claim themselves rather than trusting the summary.\n6. Close with one substantive follow-up question or open problem in the area — the kind of question that separates someone who has memorized the result from someone who understands its limits.\n\nDo not soften claims with hedging language where the field has real consensus, but do flag genuine uncertainty or disagreement honestly rather than picking a side to sound authoritative. No introductory throat-clearing, no restating the question back, no beginner analogies unless one is genuinely load-bearing for the argument. Precision and information density matter more than approachability here.";
 
   let busy = false;
   async function sendMessage(){
@@ -979,9 +1240,7 @@
     els.sendBtn.disabled = true;
 
     const payloadMessages = [];
-    const sys = [];
-    if (applied.system.trim()) sys.push(applied.system.trim());
-    if (convo.advanced !== false) sys.push(ADVANCED_DIRECTIVE);
+    const sys = buildSystemMessages(convo);
     if (sys.length) payloadMessages.push({ role: 'system', content: sys.join('\n\n') });
     // walk the active branch path (not the whole flat array) for conversation context
     pathTo(convo, userMsg.id).forEach(m => payloadMessages.push({ role: m.role, content: m.content }));
@@ -1025,6 +1284,18 @@
       els.thread.scrollTop = els.thread.scrollHeight;
       els.messageInput.focus();
     }
+  }
+
+  // builds the system-message array (custom system prompt + active teaching-depth directive)
+  // shared by the main chat send path and the side chat.
+  function buildSystemMessages(convo){
+    const sys = [];
+    if (applied.system.trim()) sys.push(applied.system.trim());
+    const teachLevel = getTeachLevel(convo);
+    if (teachLevel === 1) sys.push(ADVANCED_DIRECTIVE);
+    else if (teachLevel === 2) sys.push(MASTERY_DIRECTIVE);
+    else if (teachLevel === 3) sys.push(RESEARCH_DIRECTIVE);
+    return sys;
   }
 
   /* ---------------- sidebar mobile ---------------- */
@@ -1222,6 +1493,7 @@
     persistAll();
     syncTopbar();
     syncAdvancedToggle();
+    syncDualToggle();
     document.body.setAttribute('data-theme', applied.theme);
     document.body.classList.toggle('compact', applied.compact);
     const c = getActive();
@@ -1237,6 +1509,7 @@
   renderThreadFromActive();
   syncTopbar();
   syncAdvancedToggle();
+  syncDualToggle();
 })();
 </script>
 </body>
