@@ -102,48 +102,110 @@
   .advanced-toggle .alevel{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.03em;opacity:.7;margin-left:1px;}
 
   .side-toggle{display:flex;align-items:center;gap:7px;background:var(--bg-1);border:1px solid var(--line);color:var(--text-mid);font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;padding:6px 13px 6px 11px;border-radius:20px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;margin-right:8px;}
-  .side-toggle .ddot{width:9px;height:9px;border-radius:50%;flex:none;background:conic-gradient(var(--nvidia) 0 50%, var(--openrouter) 50% 100%);opacity:.4;transition:opacity .15s,box-shadow .15s;}
+  .side-toggle .ddot{width:6px;height:6px;border-radius:50%;flex:none;background:var(--text-faint);transition:background .15s;}
   .side-toggle.on{color:var(--text-hi);border-color:var(--text-lo);background:var(--bg-2);}
-  .side-toggle.on .ddot{opacity:1;box-shadow:0 0 7px rgba(171,104,255,.45);}
+  .side-toggle.on .ddot{background:var(--text-hi);}
   .side-toggle:hover{border-color:var(--text-lo);}
+
+  .modes-toggle{display:flex;align-items:center;gap:7px;background:var(--bg-1);border:1px solid var(--line);color:var(--text-mid);font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;padding:6px 13px 6px 11px;border-radius:20px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;margin-right:8px;max-width:180px;}
+  .modes-toggle #modesLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .modes-toggle .mdot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);flex:none;transition:background .15s,box-shadow .15s;}
+  .modes-toggle.on{color:var(--openrouter);border-color:rgba(171,104,255,.4);background:var(--openrouter-glow);}
+  .modes-toggle.on .mdot{background:var(--openrouter);box-shadow:0 0 7px var(--openrouter);}
+  .modes-toggle:hover{border-color:var(--text-lo);}
+  .modes-toggle .mcount{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.03em;opacity:.85;background:rgba(171,104,255,.22);color:var(--openrouter);border-radius:100px;padding:1px 6px;margin-left:1px;}
+
+  /* ============ MODES MODAL ============ */
+  .modes-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modes-overlay.show{display:flex;}
+  .modes-modal{width:100%;max-width:760px;max-height:88vh;background:var(--bg-1);border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.6);animation:modal-in .18s ease;}
+  .modes-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 22px 14px;border-bottom:1px solid var(--line-soft);flex:none;}
+  .modes-head h2{margin:0;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:var(--text-hi);display:flex;align-items:center;gap:9px;}
+  .modes-head p{margin:4px 0 0;font-size:12px;color:var(--text-lo);line-height:1.5;}
+  .modes-head .close-btn{background:none;border:none;color:var(--text-lo);cursor:pointer;padding:5px;border-radius:6px;flex:none;}
+  .modes-head .close-btn:hover{color:var(--text-hi);background:var(--bg-2);}
+  .modes-body{overflow-y:auto;padding:16px 22px 6px;flex:1;}
+  .modes-group{margin-bottom:20px;}
+  .modes-group-title{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);margin:0 0 10px;display:flex;align-items:center;gap:7px;}
+  .modes-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  @media (max-width:620px){.modes-grid{grid-template-columns:1fr;}}
+  .mode-card{display:flex;align-items:flex-start;gap:10px;text-align:left;background:var(--bg-2);border:1px solid var(--line);color:var(--text-mid);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .13s,background .13s,color .13s;}
+  .mode-card:hover{border-color:var(--text-lo);}
+  .mode-card.active{border-color:var(--openrouter-dim);background:var(--openrouter-glow);color:var(--text-hi);}
+  .mode-card .mchk{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--text-faint);flex:none;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:border-color .13s,background .13s;}
+  .mode-card.active .mchk{border-color:var(--openrouter);background:var(--openrouter);}
+  .mode-card .mchk svg{opacity:0;transition:opacity .13s;}
+  .mode-card.active .mchk svg{opacity:1;}
+  .mode-card .mbody{min-width:0;}
+  .mode-card .mname{font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;color:var(--text-hi);line-height:1.3;}
+  .mode-card .mdesc{font-size:11.5px;color:var(--text-lo);line-height:1.4;margin-top:2px;}
+  .modes-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 22px;border-top:1px solid var(--line-soft);flex:none;}
+  .modes-actions .mleft{font-size:12px;color:var(--text-lo);}
+  .modes-actions .mleft button{background:none;border:none;color:var(--openrouter);cursor:pointer;font-size:12px;font-weight:500;padding:0;text-decoration:underline;text-underline-offset:2px;}
+  .modes-actions .mright{display:flex;gap:8px;}
 
   /* ============ SIDE CHAT — a small independent scratch conversation next to the main thread,
      for asking a quick clarifying question without derailing the main chat ============ */
   .body-row{flex:1;display:flex;min-height:0;position:relative;}
-  .thread-col{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;}
+  .thread-col{flex:1;display:flex;flex-direction:column;min-width:340px;min-height:0;}
 
-  .side-panel{width:0;flex:none;overflow:hidden;display:flex;flex-direction:column;border-left:1px solid var(--line);background:var(--bg-1);transition:width .2s ease;}
-  .side-panel.open{width:340px;}
+  .side-panel{width:0;flex:none;overflow:hidden;display:flex;flex-direction:column;border-left:1px solid var(--line);background:var(--bg-0);transition:width .2s ease;}
+  .side-panel.open{width:min(300px,32vw);}
+  @media (max-width:1100px){
+    .side-panel.open{width:min(280px,38vw);}
+  }
   @media (max-width:880px){
     .side-panel{position:fixed;top:0;right:0;bottom:0;width:0;z-index:30;box-shadow:-14px 0 34px rgba(0,0,0,.45);}
-    .side-panel.open{width:min(360px,88vw);}
+    .side-panel.open{width:min(320px,82vw);}
   }
-  .side-scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:29;}
+  .side-scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:29;}
   .side-scrim.show{display:block;}
   @media (min-width:881px){.side-scrim{display:none !important;}}
 
-  .side-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 14px;border-bottom:1px solid var(--line);flex:none;}
-  .side-panel-head .stitle{display:flex;align-items:center;gap:7px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text-hi);white-space:nowrap;}
-  .side-panel-head .stitle::before{content:'';width:7px;height:7px;border-radius:50%;flex:none;background:conic-gradient(var(--nvidia) 0 50%, var(--openrouter) 50% 100%);}
+  .side-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 14px;border-bottom:1px solid var(--line-soft);flex:none;}
+  .side-panel-head .stitle{display:flex;align-items:center;gap:7px;font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;color:var(--text-hi);white-space:nowrap;}
+  .side-panel-head .stitle::before{content:'';width:5px;height:5px;border-radius:50%;flex:none;background:var(--text-faint);}
   .side-panel-head .side-actions{display:flex;align-items:center;gap:2px;}
 
-  .side-thread{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:14px;}
-  .side-empty{color:var(--text-lo);font-size:12.5px;line-height:1.65;padding:6px 2px;}
-  .side-msg .role-label{font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);margin-bottom:4px;}
-  .side-msg.user .role-label{color:var(--text-mid);}
-  .side-msg.assistant .role-label{color:var(--nvidia);}
-  .side-msg .bubble{font-size:13.5px;line-height:1.62;}
-  .side-msg .bubble p{margin:0 0 10px;}
+  .side-thread{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:16px;}
+  .side-empty{color:var(--text-lo);font-size:12px;line-height:1.65;padding:2px;}
+  .side-msg{display:flex;flex-direction:column;max-width:100%;}
+  .side-msg .role-label{font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+  .side-msg.user .role-label{
+    background:linear-gradient(90deg,var(--nvidia) 0%,var(--openrouter) 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    -webkit-text-fill-color:transparent;
+    font-weight:600;
+  }
+  .side-msg.assistant .role-label{color:var(--openrouter);}
+  .side-msg .bubble{font-size:13px;line-height:1.58;}
+  .side-msg.user .bubble{
+    padding-left:10px;
+    border-left:2px solid var(--nvidia);
+    font-weight:500;
+    background:linear-gradient(90deg,var(--nvidia) 0%,var(--openrouter) 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    -webkit-text-fill-color:transparent;
+  }
+  .side-msg.assistant .bubble{color:var(--text-hi);}
+  .side-msg .bubble p{margin:0 0 8px;}
   .side-msg .bubble p:last-child{margin-bottom:0;}
+  .side-msg .bubble pre{background:var(--bg-2);border:1px solid var(--line-soft);border-radius:8px;padding:9px 10px;overflow-x:auto;margin:6px 0;}
+  .side-msg .bubble pre code{background:none;padding:0;font-size:12px;line-height:1.5;color:var(--text-mid);}
+  .side-msg .bubble code{font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--bg-2);padding:1px 5px;border-radius:4px;color:var(--text-mid);}
 
-  .side-composer{display:flex;align-items:flex-end;gap:8px;padding:11px 12px;border-top:1px solid var(--line);flex:none;}
-  .side-composer textarea{flex:1;background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;color:var(--text-hi);font-family:'Inter',sans-serif;font-size:13px;line-height:1.45;resize:none;max-height:110px;outline:none;transition:border-color .15s;}
-  .side-composer textarea:focus{border-color:var(--text-lo);}
-  .side-composer textarea::placeholder{color:var(--text-lo);}
-  .side-send-btn{background:var(--bg-2);border:1px solid var(--line);color:var(--text-mid);width:30px;height:30px;border-radius:9px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s;}
-  .side-send-btn:hover:not(:disabled){color:var(--text-hi);border-color:var(--text-lo);}
-  .side-send-btn:disabled{opacity:.4;cursor:not-allowed;}
-  .side-panel-hint{padding:9px 14px;font-size:11px;color:var(--text-faint);border-top:1px solid var(--line);line-height:1.5;}
+  .side-composer{padding:12px 12px 14px;flex:none;}
+  .side-composer-box{display:flex;align-items:flex-end;gap:8px;background:var(--bg-2);border:1px solid var(--line);border-radius:18px;padding:8px 8px 8px 14px;transition:border-color .15s;}
+  .side-composer-box:focus-within{border-color:#4a4a4a;}
+  .side-composer textarea{flex:1;background:none;border:none;outline:none;resize:none;color:var(--text-hi);font-family:'Inter',sans-serif;font-size:13px;line-height:1.5;max-height:110px;padding:5px 0;}
+  .side-composer textarea::placeholder{color:var(--text-faint);}
+  .side-send-btn{background:var(--bg-3);border:none;color:var(--text-mid);width:26px;height:26px;border-radius:50%;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;}
+  .side-send-btn:hover:not(:disabled){color:var(--text-hi);background:#3a3a3a;}
+  .side-send-btn:disabled{opacity:.35;cursor:not-allowed;}
 
 
   .branch-switch{display:flex;align-items:center;gap:4px;margin-top:8px;}
@@ -364,6 +426,11 @@
         <span class="ddot"></span>
         Side chat
       </button>
+      <button type="button" class="modes-toggle" id="modesToggle" title="Response modes — layer extra behaviors onto every answer">
+        <span class="mdot"></span>
+        <span id="modesLabel">Modes</span>
+        <span class="mcount" id="modesCount" style="display:none;">0</span>
+      </button>
       <button type="button" class="advanced-toggle" id="advancedToggle" title="Cycle teaching depth: Standard → Advanced → Mastery">
         <span class="adot"></span>
         <span id="advancedLabel">Advanced</span>
@@ -428,12 +495,13 @@
         <div class="side-empty" id="sideEmpty">Ask a quick side question here — like "what does that term mean?" — without adding it to the main conversation. The main chat so far is given to it as context, so it can help explain what's already been discussed.</div>
       </div>
       <div class="side-composer">
-        <textarea id="sideMessageInput" rows="1" placeholder="Ask a side question…"></textarea>
-        <button type="button" class="side-send-btn" id="sideSendBtn" aria-label="Send side question">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M12 5L6 11M12 5L18 11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
+        <div class="side-composer-box">
+          <textarea id="sideMessageInput" rows="1" placeholder="Ask a side question…"></textarea>
+          <button type="button" class="side-send-btn" id="sideSendBtn" aria-label="Send side question">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M12 5L6 11M12 5L18 11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
       </div>
-      <div class="side-panel-hint">Doesn't touch the main conversation or its context.</div>
     </div>
     </div>
   </div>
@@ -584,6 +652,34 @@
   </div>
 </div>
 
+<!-- MODES MODAL -->
+<div class="modes-overlay" id="modesOverlay">
+  <div class="modes-modal">
+    <div class="modes-head">
+      <div>
+        <h2>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Response modes
+        </h2>
+        <p>Pick as many as you like — each one layers extra instructions onto every reply in this chat, on top of your teaching-depth setting.</p>
+      </div>
+      <button class="close-btn" id="modesClose" aria-label="Close modes">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M6 18L18 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="modes-body" id="modesBody">
+      <!-- groups + cards injected by JS from MODE_DEFS -->
+    </div>
+    <div class="modes-actions">
+      <div class="mleft"><button type="button" id="modesClearBtn">Clear all</button></div>
+      <div class="mright">
+        <button type="button" class="btn-secondary" id="modesCancelBtn">Cancel</button>
+        <button type="button" class="btn-primary" id="modesSaveBtn">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -644,6 +740,8 @@
     providerBadge: $('providerBadge'), topModelName: $('topModelName'),
     thread: $('thread'), threadInner: $('threadInner'), emptyState: $('emptyState'),
     advancedToggle: $('advancedToggle'), advancedLabel: $('advancedLabel'), dualToggle: $('dualToggle'),
+    modesToggle: $('modesToggle'), modesLabel: $('modesLabel'), modesCount: $('modesCount'), modesOverlay: $('modesOverlay'), modesClose: $('modesClose'),
+    modesBody: $('modesBody'), modesClearBtn: $('modesClearBtn'), modesCancelBtn: $('modesCancelBtn'), modesSaveBtn: $('modesSaveBtn'),
     bodyRow: $('bodyRow'), sidePanel: $('sidePanel'), sideScrim: $('sideScrim'),
     sideThread: $('sideThread'), sideEmpty: $('sideEmpty'),
     sideMessageInput: $('sideMessageInput'), sideSendBtn: $('sideSendBtn'),
@@ -805,7 +903,7 @@
     renderThreadFromActive();
     renderConvoList();
     syncTopbar();
-    syncAdvancedToggle();
+    syncAdvancedToggle(); syncModesToggle();
     syncDualToggle();
   }
 
@@ -816,7 +914,7 @@
     renderConvoList();
     renderThreadFromActive();
     syncTopbar();
-    syncAdvancedToggle();
+    syncAdvancedToggle(); syncModesToggle();
     syncDualToggle();
     showToast('Conversation deleted');
   }
@@ -840,7 +938,7 @@
     renderConvoList();
     renderThreadFromActive();
     syncTopbar();
-    syncAdvancedToggle();
+    syncAdvancedToggle(); syncModesToggle();
     syncDualToggle();
     els.messageInput.focus();
     if (window.innerWidth <= 880) closeSidebar();
@@ -1018,7 +1116,7 @@
       c.teachLevel = next;
       delete c.advanced; // drop legacy field now that teachLevel is authoritative
       persistAll();
-      syncAdvancedToggle();
+      syncAdvancedToggle(); syncModesToggle();
       showToast(
         next === 0 ? 'Standard mode — concise answers' :
         next === 1 ? 'Advanced mode — deeper, expert-level answers' :
@@ -1047,6 +1145,11 @@
   if (els.dualToggle) els.dualToggle.addEventListener('click', () => toggleSidePanel());
   if (els.sideCloseBtn) els.sideCloseBtn.addEventListener('click', () => toggleSidePanel(false));
   if (els.sideScrim) els.sideScrim.addEventListener('click', () => toggleSidePanel(false));
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const c = getActive();
+    if (c && c.sideOpen) toggleSidePanel(false);
+  });
   if (els.sideClearBtn) {
     els.sideClearBtn.addEventListener('click', () => {
       const c = getActive();
@@ -1121,13 +1224,18 @@
     sideBusy = true;
     els.sideSendBtn.disabled = true;
 
-    // ground the side chat in the main conversation so far, without touching the main thread itself
+    // ground the side chat in the main conversation so far, without touching the main thread itself.
+    // Side chat intentionally does NOT inherit the main chat's teach-level (Standard/Advanced/Mastery/Research)
+    // or active response Modes — it's a quick scratch space, so every reply here stays short and on point
+    // regardless of how verbose the main chat is configured to be.
     const mainPath = pathTo(convo, convo.activeLeaf);
     const transcript = mainPath.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.content).join('\n\n');
-    const sys = buildSystemMessages(convo);
+    const sys = [];
+    if (applied.system.trim()) sys.push(applied.system.trim());
+    sys.push(SIDE_CHAT_DIRECTIVE);
     sys.push(mainPath.length
-      ? "The person is having a separate side conversation to ask quick clarifying questions about the main chat below, without adding those questions to the main chat itself. Use the transcript for context, and answer only the side question — keep it focused and brief unless asked to go deeper.\n\n--- Main conversation so far ---\n" + transcript
-      : "The person is using a side chat scratch space alongside their (currently empty) main conversation. Answer their question directly and concisely.");
+      ? "The person is having a separate side conversation to ask quick clarifying questions about the main chat below. Use the transcript for context, and answer only the side question.\n\n--- Main conversation so far ---\n" + transcript
+      : "The person is using a side chat scratch space alongside their (currently empty) main conversation. Answer their question directly.");
     const payloadMessages = [{ role: 'system', content: sys.join('\n\n') }];
     convo.sideMessages.forEach(m => payloadMessages.push({ role: m.role, content: m.content }));
 
@@ -1193,19 +1301,27 @@
   }
 
   // Level 1 — Advanced: deeper, expert-level answers with real technical substance.
-  const ADVANCED_DIRECTIVE = "Act as an expert-level mentor teaching a capable, motivated learner who wants true mastery, not a summary. For every answer: go deep, not just wide — explain the underlying mechanics, the 'why' behind rules of thumb, and where beginners get it wrong. Use precise technical vocabulary but define new terms the first time you use them. Prefer worked examples, edge cases, and comparisons to alternatives over generic definitions. When relevant, show the math/formula/code explicitly. Structure longer answers with clear headings. Do not pad with filler or excessive caveats — write like a top practitioner explaining this to a sharp peer who wants to actually get good at it.";
+  const STANDARD_DIRECTIVE = "You are in Standard mode for this chat. The learner wants a clear, correct, usable answer with minimal ceremony — this is the default, not a 'lite' version of the other modes, so follow it deliberately rather than drifting into either extreme:\n\n1. Answer the actual question first, in the first sentence or two, before any setup or background.\n2. Keep explanations proportional to what was asked — a simple question gets a simple answer, not a full teaching breakdown.\n3. Use plain, everyday language over jargon; if a technical term is genuinely necessary, define it briefly in the same sentence rather than assuming it's known.\n4. Skip framework scaffolding (no forced headings like 'Mechanism' or 'Misconceptions') unless the content is naturally long enough to need structure for readability.\n5. Include an example only when it clarifies something that words alone wouldn't — not as a default habit.\n6. Do not pad with disclaimers, throat-clearing ('Great question!'), or restating the question back to the user.\n7. Do not end with a quiz question, a follow-up prompt, or a call to 'let me know if you want more detail' — let the answer stand on its own.\n8. If the question is ambiguous, make a reasonable assumption and state it in one clause rather than stopping to ask.\n9. Prefer concrete specifics (numbers, names, exact steps) over vague generalities whenever they're available.\n10. For code, give working code plus a short explanation of what it does — not a lecture on the underlying paradigm unless asked.\n11. It is fine, and often better, for the whole answer to be a few sentences or a short list rather than multiple paragraphs.\n12. If more depth would genuinely help, you may offer one brief line noting that — but do not provide the deeper version unprompted.\n13. Avoid bullet-pointing every answer by default — use plain sentences for anything that reads naturally as prose, and reserve lists for content that's genuinely list-shaped.\n14. Do not volunteer caveats, edge cases, or 'it depends' framing unless the question specifically turns on them; give the direct, common-case answer.\n15. Match the user's own register — casual questions get a casual tone, formal or technical questions get a more precise one, without over-correcting either way.\n16. When multiple valid answers exist, give the single best one rather than surveying all options, unless the user is explicitly comparing choices.\n17. Keep formatting minimal: avoid unnecessary bold text, emoji, or nested sub-bullets that add visual noise without adding information.\n18. If a task has a concrete deliverable (a snippet, a draft, a number), lead with that deliverable rather than narrating your approach to producing it.\n19. Do not repeat information the user already stated back to them as confirmation before answering.\n20. When truly unsure of a fact, say so plainly in one clause rather than hedging the entire answer around the uncertainty.";
+
+  const ADVANCED_DIRECTIVE = "You are in Advanced mode for this chat. Act as an expert-level mentor teaching a capable, motivated learner who wants real depth, not a summary and not a full pedagogical workup — calibrate to this middle ground deliberately:\n\n1. Lead with the direct answer or core claim in the first one or two sentences, then use the rest of the response to add depth.\n2. Go deep, not just wide: explain the underlying mechanics and the 'why' behind rules of thumb, not just the rule itself.\n3. Name where beginners typically get this wrong, briefly — one or two sentences, not a full section.\n4. Use precise technical vocabulary, but define any new or non-obvious term the first time it appears, in-line rather than in a glossary.\n5. Prefer one well-chosen worked example or comparison to alternatives over an abstract, example-free definition.\n6. When relevant, show the actual math, formula, or code rather than describing it in prose.\n7. Structure answers longer than a few paragraphs with clear headings; keep short answers unstructured and conversational.\n8. Note real trade-offs or alternative approaches when they materially affect the answer, but don't force a full comparison table for simple questions.\n9. Do not pad with filler, hedging, or excessive caveats — write like a top practitioner explaining this to a sharp peer who wants to actually get good at it.\n10. Do not add a forced 'common misconceptions' section, a closing quiz question, or a rigid multi-part framework — those belong to Mastery mode, not this one.\n11. Skip introductory throat-clearing and restating the question; get to substance immediately.\n12. Calibrate technical depth to what the question itself implies about the learner's current level, and adjust up or down within the conversation as that becomes clearer.\n13. When a concept has a standard or canonical name in the field, use that name explicitly rather than describing it periphrastically, so the learner can look it up later.\n14. If there's a common tool, library, or technique practitioners actually reach for here, name it specifically rather than speaking only in generalities.\n15. Where the 'textbook' answer and the 'in practice' answer diverge, say so explicitly and give both, rather than quietly picking one.\n16. Use precise numbers, complexity bounds, or magnitudes where they exist instead of vague words like 'fast' or 'a lot'.\n17. If the question touches a genuinely unsettled or debated point, say that plainly in a sentence rather than presenting one view as uncontested.\n18. Favor showing the mechanism behind a tool or API over just listing its usage syntax, when both are relevant.\n19. Keep asides and tangents short; if a related topic is worth mentioning but not central, flag it in one line rather than expanding it inline.\n20. End the answer once the substance is delivered — no summary paragraph restating what was just said unless the answer was long enough to genuinely need one.";
 
   // Level 2 — Mastery: a full pedagogical framework layered on top of Advanced, optimized for
   // durable understanding rather than a quick answer. Encodes worked-example teaching,
   // misconception-checking, spaced retrieval, and active recall — standard techniques from
   // cognitive science for learning that sticks.
-  const MASTERY_DIRECTIVE = ADVANCED_DIRECTIVE + "\n\nYou are now in Mastery teaching mode. The learner's goal is durable, transferable understanding, not just a correct-sounding answer, so teach deliberately using this framework, adapted to the question (skip sections that genuinely don't apply rather than forcing all of them):\n\n1. Core idea first — one or two sentences giving the essential concept in plain terms, before any jargon or formalism.\n2. Mechanism — explain *why* it works or *why* it's true, not just *that* it's true. Trace the causal chain or derivation; don't state conclusions as facts to be accepted.\n3. Worked example — walk through at least one concrete example step by step, showing intermediate work (calculations, code execution trace, or reasoning steps), not just the final result.\n4. Where it breaks / common misconceptions — name the specific mistake a learner is likely to make here, why it's tempting, and why it's wrong. This is often the highest-value part of the answer.\n5. How it connects — briefly place the idea in context: what it generalizes from, what it's a special case of, or what related concept it's easy to confuse it with.\n6. Check your understanding — end with one short, specific question that tests whether the learner actually grasped the mechanism (not a trivia recall question). Do not answer it yourself; let the learner attempt it first.\n\nUse headings for each stage on longer answers, but keep prose tight — depth should come from precision and worked detail, not from padding or repeating yourself. Calibrate technical level to what the learner's question implies about their current knowledge, and define any new term the first time it appears. If code, math, or a diagram would make the mechanism concrete, include it rather than describing it abstractly.";
+  const MASTERY_DIRECTIVE = "You are in Mastery mode for this chat, teaching a capable, motivated learner whose goal is durable, transferable understanding — not a correct-sounding answer they'll forget in a week. Use precise vocabulary, defining new terms the first time they appear, and write like a top practitioner mentoring a sharp peer rather than reciting a textbook. Do not pad with filler, throat-clearing, or excessive caveats. Teach deliberately using this framework, adapted to the question — skip a stage only if it genuinely doesn't apply, rather than forcing all of them onto a trivial question:\n\n1. Core idea first — one or two sentences giving the essential concept in plain terms, before any jargon or formalism is introduced.\n2. Mechanism — explain *why* it works or *why* it's true, not just *that* it's true. Trace the actual causal chain or derivation; don't state conclusions as facts to be accepted on authority.\n3. Worked example — walk through at least one concrete example step by step, showing intermediate work (calculations, a code trace, or explicit reasoning steps), not just the final result.\n4. Where it breaks / common misconceptions — name the specific mistake a learner is likely to make here, why it's tempting to make it, and exactly why it's wrong. This is often the highest-value part of the answer, so don't shortchange it.\n5. How it connects — briefly place the idea in context: what it generalizes from, what it's a special case of, or what related concept it's commonly confused with.\n6. Check your understanding — end with one short, specific question that tests whether the learner actually grasped the mechanism, not a trivia-recall question. Do not answer it yourself; let the learner attempt it first.\n7. Use clear headings for each stage on longer answers, matching the numbering above, so the learner can navigate the structure at a glance.\n8. Keep the prose itself tight within each stage — depth should come from precision and worked detail, not from repeating yourself or restating the question.\n9. Calibrate technical level to what the learner's question implies about their current knowledge, and adjust as that becomes clearer over the conversation.\n10. If code, math, or a diagram would make the mechanism concrete, include it directly rather than describing it abstractly in words.\n11. When a term has more than one common meaning across contexts, disambiguate which one you're using before relying on it.\n12. Prefer teaching the general principle behind a specific fact whenever a general principle actually exists, rather than presenting the fact as an isolated data point.\n13. If the topic has a well-known historical example, failure case, or origin story that illuminates the mechanism, use it rather than inventing a generic hypothetical.\n14. Distinguish explicitly between what is a hard rule and what is a heuristic or rule of thumb with exceptions.\n15. When the worked example involves a nontrivial calculation, show enough intermediate steps that the learner could reproduce it independently, not just check it.\n16. If the concept has a natural 'next question' a learner would ask after mastering this one, name it in one line so they know where to go next.\n17. Avoid over-scaffolding trivial content — a genuinely simple fact does not need all six stages spelled out; compress or merge stages when the content doesn't warrant the full structure.\n18. When comparing this idea to a related one it's easily confused with, be specific about the actual point of divergence rather than a vague 'they're different.'\n19. If the learner's phrasing reveals a specific misconception already in progress, address that misconception directly and early rather than only covering it generically in stage 4.\n20. Close the response once the check-understanding question is asked — no additional summary or restatement after it.";
 
   // Level 3 — Research: the ceiling. Assumes a strong existing foundation and drops most
   // beginner scaffolding in favor of formal rigor, primary-source grounding, and an honest
   // account of what's actually unsettled — the way a domain expert would brief a colleague,
   // not the way a textbook introduces a novice.
-  const RESEARCH_DIRECTIVE = ADVANCED_DIRECTIVE + "\n\nYou are now in Research teaching mode: graduate-seminar / practitioner-briefing rigor, for a learner who already has the prerequisites and wants the real structure of the field, not a simplified on-ramp. This mode trades gentle scaffolding for density and precision:\n\n1. State the claim precisely first, using correct formal/technical notation or terminology, not a plain-language paraphrase — assume the reader can look up an unfamiliar term but flag it in one clause if it's non-standard.\n2. Give the actual derivation, proof sketch, or mechanistic justification — not just the intuition pump. If a full derivation is long, give the key steps and state clearly which parts are being elided and why.\n3. Address the boundary conditions explicitly: under what assumptions does this hold, where does it degrade or fail, and what's the strongest known counterexample or edge case.\n4. Compare against the leading alternative approach or competing theory, and give a real reason one is preferred in which regime — not a vague pros/cons list.\n5. State what is actually settled vs. still contested or actively researched in this area, and where possible, point to the kind of primary source (paper, spec, dataset, proof) that would let the learner verify the claim themselves rather than trusting the summary.\n6. Close with one substantive follow-up question or open problem in the area — the kind of question that separates someone who has memorized the result from someone who understands its limits.\n\nDo not soften claims with hedging language where the field has real consensus, but do flag genuine uncertainty or disagreement honestly rather than picking a side to sound authoritative. No introductory throat-clearing, no restating the question back, no beginner analogies unless one is genuinely load-bearing for the argument. Precision and information density matter more than approachability here.";
+  const RESEARCH_DIRECTIVE = "You are in Research mode for this chat: graduate-seminar / practitioner-briefing rigor, for a learner who already has the prerequisites and wants the real structure of the field, not a simplified on-ramp. This mode trades gentle scaffolding for density and precision, so write like a technical brief for a knowledgeable peer, not a lecture for a student. Do not soften claims with hedging language where the field has real consensus, but do flag genuine uncertainty or disagreement honestly rather than picking a side to sound authoritative. Use this structure, adapting it to the question rather than forcing every stage onto something narrow:\n\n1. State the claim precisely first, using correct formal or technical notation and terminology, not a plain-language paraphrase — assume the reader can look up an unfamiliar term but flag it in one clause if it's non-standard.\n2. Give the actual derivation, proof sketch, or mechanistic justification — not just the intuition pump. If a full derivation is long, give the key steps explicitly and state clearly which parts are being elided and why.\n3. Address the boundary conditions explicitly: under what assumptions does this hold, where does it degrade or fail, and what's the strongest known counterexample or edge case.\n4. Compare against the leading alternative approach or competing theory, and give a real, mechanistic reason one is preferred in which regime — not a vague pros/cons list.\n5. State plainly what is actually settled versus still contested or actively researched in this area, and where possible, point to the kind of primary source (paper, spec, dataset, proof) that would let the learner verify the claim themselves rather than trusting the summary.\n6. Close with one substantive follow-up question or open problem in the area — the kind of question that separates someone who has memorized the result from someone who understands its limits. Do not answer it yourself.\n7. No introductory throat-clearing, no restating the question back, no beginner analogies unless one is genuinely load-bearing for the argument rather than decorative.\n8. Precision and information density matter more than approachability here — assume the reader would rather re-read a dense paragraph than be handed a diluted one.\n9. Where a result depends on a specific model, dataset, or experimental setup, name it explicitly rather than generalizing beyond what was actually shown.\n10. Distinguish clearly between empirical findings, theoretical results, and expert consensus opinion — do not present one as if it were another.\n11. When citing a magnitude, rate, or bound, give the actual quantity or order of magnitude rather than a qualitative descriptor.\n12. If the field uses a standard notation or naming convention, use it exactly rather than a simplified or ad hoc substitute.\n13. Flag any place where terminology is used inconsistently across the literature, so the reader isn't misled by an apparent contradiction that's really a naming clash.\n14. When multiple competing frameworks explain the same phenomenon, name them explicitly rather than presenting only the one you find most compelling.\n15. If a claim rests on an assumption that is itself debated, surface that dependency rather than treating the claim as unconditionally established.\n16. Prefer citing the specific mechanism or proof technique over an appeal to a result being 'well known,' even if it is well known.\n17. When historical context materially changes how a result should be interpreted (e.g. it was later refined, partially overturned, or superseded), include that context briefly rather than presenting the original result as final.\n18. Keep prose dense but grammatically correct — compress by cutting redundancy, not by dropping words needed for the claim to parse unambiguously.\n19. If the question spans more than one subfield, briefly acknowledge which frame you're answering from, since the correct answer may differ by frame.\n20. Do not add a summary paragraph restating the answer after the closing follow-up question — end on the open problem itself.";
+
+  // Dedicated directive for the side chat scratch panel. This is intentionally NOT related to
+  // ADVANCED/MASTERY/RESEARCH — the side chat's entire purpose is a fast, low-friction lookup next to
+  // the main thread, so replies here stay short regardless of what teach-level or Modes are active
+  // in the main conversation.
+  const SIDE_CHAT_DIRECTIVE = "You are answering inside a side chat: a small scratch panel next to the main conversation, meant for quick lookups and clarifications, not for deep teaching or long-form writing. Every reply here must be short and strictly on point:\n\n1. Answer only the exact question asked — do not also explain related concepts, background, or context the person didn't ask for.\n2. Default to 1–3 sentences. Only exceed that if the question literally cannot be answered correctly in fewer words (e.g. it requires a short list of concrete steps).\n3. If a list is genuinely needed, cap it at the minimum number of items required — no padding items added for completeness.\n4. Never add an introduction, a restatement of the question, or a closing summary — start with the answer and stop when it's given.\n5. Do not include a worked example, analogy, or illustrative story unless the question explicitly asks for one.\n6. Do not include caveats, disclaimers, or 'it depends' hedging unless the answer is actually wrong without them.\n7. Do not offer to elaborate, ask a follow-up question, or suggest what to ask next — let the person ask if they want more.\n8. Skip headings, bold section labels, and multi-part structure entirely; a side-chat answer should read as one short block or a tight list, never a mini-report.\n9. If code is requested, give only the minimal snippet needed — no surrounding explanation unless asked.\n10. If the honest answer is a single word, a short phrase, or one sentence, give exactly that and nothing more.";
 
   let busy = false;
   async function sendMessage(){
@@ -1286,15 +1402,142 @@
     }
   }
 
-  // builds the system-message array (custom system prompt + active teaching-depth directive)
+  /* ---------------- response modes ---------------- */
+  // 15 stackable modes, independent of the Standard/Advanced/Mastery/Research teach-level dial above.
+  // Any number can be active at once per-conversation; each contributes one directive string that
+  // gets appended to the system messages sent with every turn.
+  const MODE_DEFS = [
+    { group: '📚 Deep Learning & Mastery', modes: [
+      { id: 'first-principles', name: 'First Principles Mode', desc: 'Breaks the topic down to foundational truths and rebuilds it from scratch.',
+        directive: "Activate First Principles Mode. Before explaining the topic normally, strip it down to its most foundational, irreducible truths — the things that are true independent of convention or received wisdom. Explicitly separate 'assumed knowledge' from 'derived conclusions.' Then rebuild the concept back up from those foundations, step by step, showing how each layer follows from the one below it, rather than starting from the conventional textbook framing." },
+      { id: 'feynman', name: 'The Feynman Simulator', desc: 'Acts as a curious novice who pushes back on jargon and logical gaps as you explain.',
+        directive: "Activate The Feynman Simulator. When the user explains a concept to you, respond as a curious, intelligent novice — not as an expert validating their answer. Ask genuine clarifying questions, point out any jargon used without definition, and flag any step in their explanation where the logic doesn't clearly follow from the previous step. Don't pretend to understand something that wasn't actually explained. Your job is to expose gaps in their explanation, not to fill those gaps in for them." },
+      { id: 'five-whys', name: 'The "5 Whys" Interrogator', desc: 'Drills into a premise by asking "why" five times to reach the root cause.',
+        directive: "Activate The '5 Whys' Interrogator. Take the core premise or claim in the user's message and interrogate it by asking 'why' repeatedly (aim for five iterations), with each answer becoming the target of the next 'why.' Show this chain explicitly and visibly, e.g. as a numbered sequence, ending at what appears to be the true root cause or core mechanism rather than stopping at a superficial or proximate explanation." },
+      { id: 'analogy-engine', name: 'The Analogy Engine', desc: 'Explains strictly through detailed real-world metaphors, no technical definitions.',
+        directive: "Activate The Analogy Engine. Explain the topic using only detailed, well-developed real-world analogies and metaphors — do not use formal technical definitions as the primary explanatory tool. Pick one central analogy that maps closely onto the real mechanics of the concept (not just a surface resemblance), extend it in detail, and explicitly note anywhere the analogy breaks down or stops being accurate." },
+      { id: 'edge-case', name: 'Edge Case & Failure Mode Explorer', desc: 'Focuses on exceptions, limitations, and historical failures where the rule breaks.',
+        directive: "Activate Edge Case & Failure Mode Explorer. Instead of explaining the general rule or theory in the normal way, focus the response primarily on where and how it fails: boundary conditions, known exceptions, historical incidents or disasters where reliance on the rule caused problems, and the specific circumstances that make those failure modes likely. Treat the 'normal case' as background context only." },
+      { id: 'steel-man', name: 'Steel-Manning Mode', desc: 'Builds the strongest, most rigorous, most charitable case for a position — even one you disagree with.',
+        directive: "Activate Steel-Manning Mode. Construct the strongest, most rigorous, and most intellectually charitable version of the argument or position in question — not a weak or strawman version, and not a hedge-everything both-sides summary. Use the best available evidence and reasoning a genuine, informed advocate would use, and present it as persuasively and honestly as that advocate could, even if the position is one you would not personally endorse." },
+      { id: 'polymath', name: 'The Polymath (Cross-Disciplinary) Mode', desc: 'Maps the topic\u2019s mechanics onto an unrelated field to reveal structural parallels.',
+        directive: "Activate The Polymath (Cross-Disciplinary) Mode. Explain the topic primarily by mapping its underlying mechanics, dynamics, or structure onto a completely different field or domain (e.g. explain an economics concept through biology, or a software concept through urban planning). Make the cross-domain mapping precise and structural, not just a loose metaphor — explicitly identify what plays the equivalent role of each key component in the source domain." },
+      { id: 'pareto', name: 'The 80/20 Pareto Guide', desc: 'Skips the fluff and covers only the 20% of concepts that drive 80% of understanding.',
+        directive: "Activate The 80/20 Pareto Guide. Identify and explain only the small subset of concepts, facts, or principles (roughly 20%) that account for the large majority (roughly 80%) of real understanding or practical competence in this topic. Explicitly state what you are deliberately leaving out because it's lower-leverage, rather than trying to be comprehensive." } ] },
+    { group: '🧠 Reasoning & Analysis', modes: [
+      { id: 'deep-research', name: 'Deep Research / Multi-Step Web Search', desc: 'Cross-references multiple sources and produces a heavily cited, comprehensive report.',
+        directive: "Activate Deep Research mode. Treat this as a research task requiring thoroughness over speed: cross-reference multiple independent sources, verify claims where possible, note any disagreement or uncertainty between sources rather than picking one silently, and produce a comprehensive, clearly cited report rather than a quick summary. Prioritize accuracy and traceability of claims to sources over brevity." },
+      { id: 'chain-of-thought', name: 'Chain-of-Thought (Step-by-Step)', desc: 'Shows full logical or mathematical work before giving the final answer.',
+        directive: "Activate Chain-of-Thought mode. For any question involving reasoning, calculation, or multi-step logic, show your work explicitly and sequentially before stating the final answer — do not jump straight to a conclusion. Number or clearly separate each step, make each inferential leap visible, and only state the final answer after the full chain of reasoning has been shown." },
+      { id: 'devils-advocate', name: 'Devil\u2019s Advocate', desc: 'Actively critiques your ideas, hunts for logical fallacies and risks.',
+        directive: "Activate Devil's Advocate mode. Actively critique the user's stated idea, plan, or claim rather than simply supporting or elaborating on it. Look specifically for logical fallacies, unstated assumptions, weak evidence, and realistic risks or failure scenarios, and state them directly and specifically rather than in vague hedged terms. Be substantively critical, not just contrarian for its own sake." } ] },
+    { group: '🎨 Formatting & Note-Taking', modes: [
+      { id: 'brain-dump', name: 'Handwritten Notes / Brain Dump', desc: 'Informal, shorthand notes with bullets, arrows, and casual phrasing.',
+        directive: "Activate Handwritten Notes / Brain Dump formatting. Present the content as informal, conversational shorthand notes rather than polished prose — short fragments, bullet points, arrows (→) to show relationships, casual phrasing, and abbreviations where natural, similar to notes someone would scribble while thinking something through quickly. Prioritize speed and capture of ideas over grammatical completeness." },
+      { id: 'zettelkasten', name: 'Zettelkasten / Obsidian Mode', desc: 'Heavy bidirectional linking, tags, and atomic concepts for a personal knowledge base.',
+        directive: "Activate Zettelkasten / Obsidian Mode formatting. Structure the response as atomic, self-contained concept notes suitable for a personal knowledge base. Use double-bracket wiki-links [[like this]] for any concept, term, or idea that could plausibly be its own linked note, add relevant #tags where useful, and keep each conceptual unit small and focused rather than writing one long undivided block of prose." },
+      { id: 'bluf', name: 'Executive Summary / BLUF', desc: 'Bottom-line-up-front: 3\u20135 bullets and a definitive conclusion, no preamble.',
+        directive: "Activate Executive Summary / BLUF (Bottom Line Up Front) formatting. Strip away background context and scene-setting. Open immediately with the bottom-line conclusion or recommendation, then support it with 3\u20135 crisp bullet points of the most decision-relevant detail. Avoid hedging filler; end with a clear, definitive takeaway rather than an open-ended discussion." } ] },
+    { group: '🎭 Personas & Tones', modes: [
+      { id: 'eli5', name: 'ELI5 (Explain Like I\u2019m 5)', desc: 'No jargon \u2014 simple, child-friendly analogies only.',
+        directive: "Activate ELI5 (Explain Like I'm 5) mode. Avoid all jargon, technical terminology, and formal definitions. Explain the concept using simple language and concrete, child-friendly analogies (toys, animals, everyday objects, familiar experiences) that a young child could follow, while still keeping the core idea accurate rather than oversimplified to the point of being wrong." } ] }
+  ];
+  const MODE_DIRECTIVES = {};
+  const MODE_NAMES = {};
+  MODE_DEFS.forEach(g => g.modes.forEach(m => { MODE_DIRECTIVES[m.id] = m.directive; MODE_NAMES[m.id] = m.name; }));
+
+  // per-conversation active mode ids; migrates lazily via getActiveModes()
+  function getActiveModes(c){
+    if (!c) return [];
+    if (!Array.isArray(c.modes)) return [];
+    return c.modes.filter(id => MODE_DIRECTIVES[id]);
+  }
+  let modesDraft = []; // working selection while the modal is open, applied to the convo on Save
+
+  function renderModesModal(){
+    if (!els.modesBody) return;
+    els.modesBody.innerHTML = '';
+    MODE_DEFS.forEach(g => {
+      const group = document.createElement('div');
+      group.className = 'modes-group';
+      const title = document.createElement('div');
+      title.className = 'modes-group-title';
+      title.textContent = g.group;
+      group.appendChild(title);
+      const grid = document.createElement('div');
+      grid.className = 'modes-grid';
+      g.modes.forEach(m => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'mode-card' + (modesDraft.includes(m.id) ? ' active' : '');
+        card.dataset.id = m.id;
+        card.innerHTML = `<span class="mchk"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M4 12l6 6L20 6" stroke="#0d0d0d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="mbody"><span class="mname">${m.name}</span><span class="mdesc">${m.desc}</span></span>`;
+        card.addEventListener('click', () => {
+          const i = modesDraft.indexOf(m.id);
+          if (i === -1) modesDraft.push(m.id); else modesDraft.splice(i, 1);
+          card.classList.toggle('active');
+        });
+        grid.appendChild(card);
+      });
+      group.appendChild(grid);
+      els.modesBody.appendChild(group);
+    });
+  }
+
+  function syncModesToggle(){
+    const c = getActive();
+    const active = getActiveModes(c);
+    if (!els.modesToggle) return;
+    els.modesToggle.classList.toggle('on', active.length > 0);
+    if (els.modesLabel) {
+      els.modesLabel.textContent = active.length === 0 ? 'Modes'
+        : active.length === 1 ? MODE_NAMES[active[0]]
+        : active.length + ' modes';
+    }
+    if (els.modesCount) {
+      els.modesCount.style.display = active.length > 1 ? 'inline-block' : 'none';
+      els.modesCount.textContent = String(active.length);
+    }
+    els.modesToggle.title = active.length > 0
+      ? active.map(id => MODE_NAMES[id]).join(', ') + ' \u2014 click to edit'
+      : 'Response modes \u2014 layer extra behaviors onto every answer';
+  }
+
+  function openModesModal(){
+    const c = ensureActiveConversation();
+    modesDraft = getActiveModes(c).slice();
+    renderModesModal();
+    els.modesOverlay.classList.add('show');
+  }
+  function closeModesModal(){ els.modesOverlay.classList.remove('show'); }
+
+  if (els.modesToggle) els.modesToggle.addEventListener('click', openModesModal);
+  if (els.modesClose) els.modesClose.addEventListener('click', closeModesModal);
+  if (els.modesCancelBtn) els.modesCancelBtn.addEventListener('click', closeModesModal);
+  if (els.modesOverlay) els.modesOverlay.addEventListener('click', (e) => { if (e.target === els.modesOverlay) closeModesModal(); });
+  if (els.modesClearBtn) els.modesClearBtn.addEventListener('click', () => { modesDraft = []; renderModesModal(); });
+  if (els.modesSaveBtn) els.modesSaveBtn.addEventListener('click', () => {
+    const c = ensureActiveConversation();
+    c.modes = modesDraft.slice();
+    persistAll();
+    syncModesToggle();
+    closeModesModal();
+    showToast(modesDraft.length > 0 ? modesDraft.length + ' mode' + (modesDraft.length === 1 ? '' : 's') + ' applied' : 'Modes cleared');
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && els.modesOverlay && els.modesOverlay.classList.contains('show')) closeModesModal(); });
+
+  // builds the system-message array (custom system prompt + active teaching-depth directive + active response modes)
   // shared by the main chat send path and the side chat.
   function buildSystemMessages(convo){
     const sys = [];
     if (applied.system.trim()) sys.push(applied.system.trim());
     const teachLevel = getTeachLevel(convo);
-    if (teachLevel === 1) sys.push(ADVANCED_DIRECTIVE);
+    if (teachLevel === 0) sys.push(STANDARD_DIRECTIVE);
+    else if (teachLevel === 1) sys.push(ADVANCED_DIRECTIVE);
     else if (teachLevel === 2) sys.push(MASTERY_DIRECTIVE);
     else if (teachLevel === 3) sys.push(RESEARCH_DIRECTIVE);
+    getActiveModes(convo).forEach(id => sys.push(MODE_DIRECTIVES[id]));
     return sys;
   }
 
@@ -1492,7 +1735,7 @@
     applied = JSON.parse(JSON.stringify(draft));
     persistAll();
     syncTopbar();
-    syncAdvancedToggle();
+    syncAdvancedToggle(); syncModesToggle();
     syncDualToggle();
     document.body.setAttribute('data-theme', applied.theme);
     document.body.classList.toggle('compact', applied.compact);
@@ -1508,7 +1751,7 @@
   renderConvoList();
   renderThreadFromActive();
   syncTopbar();
-  syncAdvancedToggle();
+  syncAdvancedToggle(); syncModesToggle();
   syncDualToggle();
 })();
 </script>
