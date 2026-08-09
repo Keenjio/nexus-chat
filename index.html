@@ -412,7 +412,7 @@
   <div class="main">
     <div class="topbar">
       <div class="spacer"></div>
-      <button type="button" class="side-toggle" id="dualToggle" title="Open a side chat — ask a quick side question without derailing this conversation">
+      <button type="button" class="side-toggle" id="dualToggle" title="Open a side chat — quick, unrelated questions with no memory, without derailing this conversation">
         <span class="ddot"></span>
         Side chat
       </button>
@@ -478,7 +478,7 @@
         </div>
       </div>
       <div class="side-thread" id="sideThread">
-        <div class="side-empty" id="sideEmpty">Ask a quick side question here — like "what does that term mean?" — without adding it to the main conversation. The main chat so far is given to it as context, so it can help explain what's already been discussed.</div>
+        <div class="side-empty" id="sideEmpty">Ask a quick, unrelated side question here — like "what does that term mean?" — without adding it to the main conversation. Each side-chat message is answered fresh, with no memory of earlier side-chat turns or the main conversation.</div>
       </div>
       <div class="side-composer">
         <div class="side-composer-box">
@@ -690,6 +690,7 @@
     if (typeof c.sideOpen !== 'boolean') c.sideOpen = false;
   });
   let activeId = LS.get('nexus_active_id', null);
+  let lastModes = LS.get('nexus_last_modes', []); // sticky default: modes carry over into new chats until changed
   let draft = { // unsaved settings-modal state, applied to session config on Save
     provider: LS.get('nexus_provider', 'nvidia'),
     keys: LS.get('nexus_keys', {}),
@@ -707,6 +708,7 @@
   function persistAll(){
     LS.set('nexus_conversations', conversations);
     LS.set('nexus_active_id', activeId);
+    LS.set('nexus_last_modes', lastModes);
     LS.set('nexus_provider', applied.provider);
     LS.set('nexus_keys', applied.keys);
     LS.set('nexus_models', applied.models);
@@ -833,6 +835,7 @@
       activeLeaf: null,   // id of the message at the tip of the currently-viewed branch
       sideOpen: false,       // whether the side-chat panel is open for this conversation
       sideMessages: [],      // side chat: a small independent linear conversation (no branching)
+      modes: lastModes.slice(), // sticky: new chats start with whatever modes were last active, not empty
       updatedAt: Date.now()
     };
   }
@@ -1116,7 +1119,7 @@
     if (!msgs.length) {
       const empty = document.createElement('div');
       empty.className = 'side-empty';
-      empty.textContent = 'Ask a quick side question here — like "what does that term mean?" — without adding it to the main conversation. The main chat so far is given to it as context, so it can help explain what\'s already been discussed.';
+      empty.textContent = 'Ask a quick, unrelated side question here — like "what does that term mean?" — without adding it to the main conversation. Each side-chat message is answered fresh, with no memory of earlier side-chat turns or the main conversation.';
       els.sideThread.appendChild(empty);
       return;
     }
@@ -1170,20 +1173,16 @@
     sideBusy = true;
     els.sideSendBtn.disabled = true;
 
-    // ground the side chat in the main conversation so far, without touching the main thread itself.
-    // Side chat intentionally does NOT inherit the main chat's active response Modes — it's a quick
-    // scratch space, so every reply here stays short and on point regardless of how the main chat
-    // is configured.
-    const mainPath = pathTo(convo, convo.activeLeaf);
-    const transcript = mainPath.map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.content).join('\n\n');
+    // Side chat is intentionally a stateless, single-turn scratch tool: it does not ground itself in
+    // the main conversation, and it does not carry memory of its own earlier turns either. Every
+    // message sent here is answered completely fresh — the running list in the panel is just a
+    // local log for the person to scroll back through, not conversation history sent to the model.
+    // It also does not inherit the main chat's active response Modes, for the same reason: this is
+    // meant to be a fast, unrelated, low-friction lookup, not a second thread of the same chat.
     const sys = [];
     if (applied.system.trim()) sys.push(applied.system.trim());
     sys.push(SIDE_CHAT_DIRECTIVE);
-    sys.push(mainPath.length
-      ? "The person is having a separate side conversation to ask quick clarifying questions about the main chat below. Use the transcript for context, and answer only the side question.\n\n--- Main conversation so far ---\n" + transcript
-      : "The person is using a side chat scratch space alongside their (currently empty) main conversation. Answer their question directly.");
-    const payloadMessages = [{ role: 'system', content: sys.join('\n\n') }];
-    convo.sideMessages.forEach(m => payloadMessages.push({ role: m.role, content: m.content }));
+    const payloadMessages = [{ role: 'system', content: sys.join('\n\n') }, { role: 'user', content: text }];
 
     const headers = { 'Content-Type': 'application/json', 'X-Provider': provider };
     if (apiKey) headers[HEADER_NAMES[provider]] = apiKey;
@@ -1289,6 +1288,20 @@
     if (sys.length) payloadMessages.push({ role: 'system', content: sys.join('\n\n') });
     // walk the active branch path (not the whole flat array) for conversation context
     pathTo(convo, userMsg.id).forEach(m => payloadMessages.push({ role: m.role, content: m.content }));
+
+    // Recency reinforcement: a system message written once at the top of a long conversation is a
+    // weaker signal than the established pattern of prior replies, so a mode toggled on mid-thread
+    // can otherwise get ignored as the model just continues the earlier tone. Restate the active
+    // modes right next to the newest user turn so the instruction has real positional weight —
+    // API payload only, this never touches the stored message or what's shown in the chat bubble.
+    const activeModesForSend = getActiveModes(convo);
+    if (activeModesForSend.length) {
+      const lastMsg = payloadMessages[payloadMessages.length - 1];
+      if (lastMsg && lastMsg.role === 'user') {
+        const modeNames = activeModesForSend.map(id => MODE_NAMES[id]).join(', ');
+        lastMsg.content += '\n\n[Active response mode' + (activeModesForSend.length > 1 ? 's' : '') + ' for this reply: ' + modeNames + '. Apply ' + (activeModesForSend.length > 1 ? 'them' : 'it') + ' fully, even if earlier replies above were written differently.]';
+      }
+    }
 
     const headers = { 'Content-Type': 'application/json', 'X-Provider': provider };
     if (apiKey) headers[HEADER_NAMES[provider]] = apiKey;
@@ -1471,6 +1484,7 @@
   if (els.modesSaveBtn) els.modesSaveBtn.addEventListener('click', () => {
     const c = ensureActiveConversation();
     c.modes = modesDraft.slice();
+    lastModes = modesDraft.slice(); // sticky default for the next new chat, until changed again
     persistAll();
     syncModesToggle();
     closeModesModal();
@@ -1483,7 +1497,24 @@
   function buildSystemMessages(convo){
     const sys = [];
     if (applied.system.trim()) sys.push(applied.system.trim());
-    getActiveModes(convo).forEach(id => sys.push(MODE_DIRECTIVES[id]));
+    const activeModes = getActiveModes(convo);
+    // Modes are designed to stack, but two active modes can genuinely disagree on format
+    // (e.g. Terse wants minimum words, Mastery wants a six-stage breakdown). Without guidance
+    // the model tends to silently drop one mode rather than reconcile them, which defeats the
+    // point of stacking. This also has to explicitly tell the model to override the *established
+    // tone of the conversation so far* — if a mode gets turned on mid-thread, the model otherwise
+    // tends to keep pattern-matching the denser style of earlier replies instead of actually
+    // switching, since prior turns are a stronger signal than a single system message.
+    if (activeModes.length) {
+      const names = activeModes.map(id => MODE_NAMES[id]).join(', ');
+      let meta = "The following response mode" + (activeModes.length > 1 ? 's are' : ' is') + " active for this chat: " + names + ". Apply " + (activeModes.length > 1 ? 'them' : 'it') +
+        " fully starting with your very next reply — even if earlier replies in this conversation were written in a denser, more technical, or otherwise different style. A mode being turned on mid-conversation should visibly and immediately change how you respond; do not ease into it or keep the prior tone out of consistency with earlier turns.";
+      if (activeModes.length > 1) {
+        meta += " None of the active modes takes precedence over the others by default. Where two of them make a genuinely incompatible formatting demand on the same response (for example, one calls for minimum length while another calls for a multi-stage structure, or one wants prose while another wants notes), do not silently drop one mode and follow the other. Instead, satisfy the substantive intent of every mode within a single coherent response: compress the structure the more elaborate mode asks for down to its essentials rather than omitting it, and keep the discipline the more minimal mode asks for within whatever structure remains. Where modes don't conflict, just apply all of them at once.";
+      }
+      sys.push(meta);
+    }
+    activeModes.forEach(id => sys.push(MODE_DIRECTIVES[id]));
     return sys;
   }
 
