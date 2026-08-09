@@ -292,7 +292,8 @@
 
   .bubble-wrap{display:flex;flex-direction:column;gap:6px;max-width:100%;flex:1;}
   .bubble{padding:0;border-radius:0;font-size:15px;line-height:1.72;word-wrap:break-word;color:var(--text-hi);}
-  .msg.user .bubble{background:none;color:var(--text-hi);white-space:pre-wrap;font-weight:400;}
+  .msg.user .bubble{background:none;color:var(--text-hi);white-space:pre-wrap;font-weight:400;position:relative;padding-left:16px;}
+  .msg.user .bubble::before{content:'';position:absolute;left:0;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--text-lo);}
   .msg.assistant .bubble{background:none;border:none;color:var(--text-hi);}
   .bubble p{margin:0 0 14px;}
   .bubble p:last-child{margin-bottom:0;}
