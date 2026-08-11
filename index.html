@@ -311,6 +311,8 @@
   .pdf-panel-nav{display:flex;align-items:center;gap:6px;flex:none;font-family:'Inter',sans-serif;font-size:11.5px;color:var(--text-lo);white-space:nowrap;}
   .pdf-panel-nav .icon-btn{width:22px;height:22px;}
   .pdf-panel-nav .icon-btn svg{width:12px;height:12px;}
+  .pdf-nav-sep{width:1px;height:14px;background:var(--line);flex:none;margin:0 1px;}
+  #pdfZoomIndicator{min-width:36px;text-align:center;font-variant-numeric:tabular-nums;}
   #pdfPageIndicator{min-width:44px;text-align:center;font-variant-numeric:tabular-nums;}
   .pdf-panel-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:30px;text-align:center;color:var(--text-lo);font-size:12.5px;line-height:1.65;background:var(--bg-0);}
   .pdf-panel-empty button{font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;color:var(--text-hi);background:var(--bg-1);border:1px solid var(--line);padding:8px 16px;border-radius:20px;cursor:pointer;transition:border-color .15s,background .15s;}
@@ -323,12 +325,22 @@
   .pdf-text-layer span{position:absolute;white-space:pre;transform-origin:0 0;color:transparent;cursor:text;user-select:text;}
   .pdf-text-layer ::selection{background:rgba(90,150,255,.4);}
   .pdf-scroll-wrap{width:100%;display:flex;flex-direction:column;align-items:center;gap:16px;}
-  .pdf-scroll-page{position:relative;box-shadow:0 4px 22px rgba(0,0,0,.5);flex:none;background:#3a3a3a;}
+  .pdf-scroll-page{position:relative;box-shadow:0 4px 22px rgba(0,0,0,.5);flex:none;background:#3a3a3a;overflow:hidden;}
+  .pdf-scroll-page.pdf-skel::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#333 0%,#3f3f3f 20%,#333 40%);background-size:200% 100%;animation:pdfskel 1.4s ease-in-out infinite;}
+  @keyframes pdfskel{0%{background-position:180% 0;}100%{background-position:-20% 0;}}
   .pdf-scroll-page canvas{display:block;width:100%;height:100%;background:#fff;}
   .pdf-scroll-page .pdf-text-layer{position:absolute;inset:0;overflow:hidden;line-height:1;}
   .pdf-scroll-page-num{position:absolute;bottom:-18px;right:2px;font-family:'Inter',sans-serif;font-size:10px;color:var(--text-faint);}
   .pdf-view-mode-btn.on{color:var(--text-hi);background:var(--bg-3);border-radius:6px;}
   .pdf-dark-btn.on{color:var(--text-hi);background:var(--bg-3);border-radius:6px;}
+  .pdf-attach-btn.attached{color:var(--nvidia,#10a37f);}
+
+  /* Attach chip — shows above the composer when a PDF page/selection is queued to go with the next message */
+  .pdf-attach-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;padding:0 2px;}
+  .pdf-attach-chip{display:flex;align-items:center;gap:6px;max-width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:14px;padding:5px 6px 5px 11px;font-family:'Inter',sans-serif;font-size:11.5px;color:var(--text-mid);}
+  .pdf-attach-chip .pac-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;}
+  .pdf-attach-chip .pac-remove{width:16px;height:16px;flex:none;border:none;background:transparent;color:var(--text-faint);cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;}
+  .pdf-attach-chip .pac-remove:hover{color:var(--text-hi);background:var(--bg-3);}
   /* PDF dark mode: invert the rendered page raster (the only practical way to darken canvas-drawn
      PDF content) while leaving the transparent text-selection layer untouched. */
   .pdf-panel-view.pdf-dark .pdf-page-layer canvas,
@@ -344,6 +356,16 @@
   @keyframes pdfspin{to{transform:rotate(360deg);}}
   .pdf-drag-ghost{position:fixed;top:-9999px;left:-9999px;max-width:280px;padding:8px 12px;background:var(--accent,#6a5acd);color:#fff;font-family:'Inter',sans-serif;font-size:12px;line-height:1.4;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.4);pointer-events:none;z-index:9999;white-space:normal;}
   .pdf-drop-target{outline:2px dashed var(--text-mid);outline-offset:-3px;background:var(--bg-2);}
+
+  /* Selection popup toolbar — appears near a text selection in the PDF with quick actions. */
+  .pdf-sel-toolbar{position:fixed;top:-9999px;left:-9999px;display:flex;gap:2px;background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:0 8px 22px rgba(0,0,0,.5);z-index:9998;opacity:0;transform:translateY(4px) scale(.97);transition:opacity .12s,transform .12s;pointer-events:none;}
+  .pdf-sel-toolbar.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+  .pdf-sel-toolbar button{font-family:'Inter',sans-serif;font-size:11.5px;font-weight:500;color:var(--text-mid);background:transparent;border:none;padding:6px 9px;border-radius:7px;cursor:pointer;white-space:nowrap;transition:background .12s,color .12s;}
+  .pdf-sel-toolbar button:hover{background:var(--bg-3);color:var(--text-hi);}
+
+  /* Persisted highlights over the text layer */
+  .pdf-highlight-mark{position:absolute;background:rgba(255,213,79,.38);border-radius:2px;pointer-events:none;}
+  .pdf-panel-view.pdf-dark .pdf-highlight-mark{background:rgba(255,213,79,.22);}
 
 
 
@@ -620,6 +642,7 @@
 
     <div class="composer">
       <div class="composer-inner">
+        <div class="pdf-attach-chip-row" id="pdfAttachChipRow" style="display:none;"></div>
         <div class="composer-box">
           <textarea id="messageInput" rows="1" placeholder="Message Nexus…"></textarea>
           <button class="send-btn" id="sendBtn" data-provider="nvidia" aria-label="Send message">
@@ -669,6 +692,17 @@
           <button type="button" class="icon-btn" id="pdfPageNext" title="Next page" aria-label="Next page">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
+          <span class="pdf-nav-sep"></span>
+          <button type="button" class="icon-btn" id="pdfZoomOut" title="Zoom out" aria-label="Zoom out">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3M8 11h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+          <span id="pdfZoomIndicator">100%</span>
+          <button type="button" class="icon-btn" id="pdfZoomIn" title="Zoom in" aria-label="Zoom in">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+          <button type="button" class="icon-btn" id="pdfZoomFitWidth" title="Fit to panel width" aria-label="Fit to panel width">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 8V5a1 1 0 011-1h3M21 8V5a1 1 0 00-1-1h-3M3 16v3a1 1 0 001 1h3M21 16v3a1 1 0 01-1 1h-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
           <button type="button" class="icon-btn pdf-view-mode-btn" id="pdfViewModeBtn" title="Switch between page-by-page and continuous scroll" aria-label="Switch view mode">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" id="pdfViewModeIcon"><rect x="4" y="3" width="16" height="8" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="13" width="16" height="8" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
           </button>
@@ -677,13 +711,16 @@
           </button>
         </div>
         <div class="side-actions">
+          <button type="button" class="icon-btn pdf-attach-btn" id="pdfAttachPageBtn" title="Attach this page to your next message" aria-label="Attach this page to chat">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3.5 3.5 0 015 5l-9.2 9.19a1.5 1.5 0 01-2.12-2.12l8.49-8.48" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
           <button type="button" class="icon-btn" id="pdfPanelPickBtn" title="Choose a PDF from your library" aria-label="Choose a PDF">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M7 2h7l5 5v13a2 2 0 01-2 2H7a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 2v5h5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
           </button>
           <a class="icon-btn" id="pdfPanelNewTab" href="#" target="_blank" rel="noopener" title="Open in new tab" aria-label="Open in new tab">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M7 7h10v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
-          <button type="button" class="icon-btn" id="pdfPanelCloseBtn" title="Close PDF panel" aria-label="Close PDF panel">
+          <button type="button" class="icon-btn" id="pdfPanelCloseBtn" title="Close PDF panel (Esc)" aria-label="Close PDF panel">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M6 18L18 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           </button>
         </div>
@@ -712,6 +749,12 @@
   </div>
 </div>
 <div class="pdf-drag-ghost" id="pdfDragGhost"></div>
+<div class="pdf-sel-toolbar" id="pdfSelToolbar">
+  <button type="button" data-action="explain" title="Ask Nexus to explain this">💡 Explain</button>
+  <button type="button" data-action="add" title="Add to the message box">➕ Add to chat</button>
+  <button type="button" data-action="highlight" title="Highlight this text">🖍️ Highlight</button>
+  <button type="button" data-action="copy" title="Copy to clipboard">📋 Copy</button>
+</div>
 <div class="side-scrim" id="sideScrim"></div>
 
 <!-- SETTINGS MODAL -->
@@ -1050,9 +1093,10 @@
     pdfPageWrap: $('pdfPageWrap'), pdfPageLayer: $('pdfPageLayer'), pdfPageCanvas: $('pdfPageCanvas'),
     pdfTextLayer: $('pdfTextLayer'), pdfPanelNav: $('pdfPanelNav'),
     pdfScrollWrap: $('pdfScrollWrap'), pdfViewModeBtn: $('pdfViewModeBtn'), pdfViewModeIcon: $('pdfViewModeIcon'),
-    pdfDarkBtn: $('pdfDarkBtn'),
+    pdfDarkBtn: $('pdfDarkBtn'), pdfAttachPageBtn: $('pdfAttachPageBtn'), pdfAttachChipRow: $('pdfAttachChipRow'),
     pdfPagePrev: $('pdfPagePrev'), pdfPageNext: $('pdfPageNext'), pdfPageIndicator: $('pdfPageIndicator'),
-    pdfDragGhost: $('pdfDragGhost'),
+    pdfZoomOut: $('pdfZoomOut'), pdfZoomIn: $('pdfZoomIn'), pdfZoomFitWidth: $('pdfZoomFitWidth'), pdfZoomIndicator: $('pdfZoomIndicator'),
+    pdfDragGhost: $('pdfDragGhost'), pdfSelToolbar: $('pdfSelToolbar'),
     sideThread: $('sideThread'), sideEmpty: $('sideEmpty'),
     sideMessageInput: $('sideMessageInput'), sideSendBtn: $('sideSendBtn'),
     sideCloseBtn: $('sideCloseBtn'), sideClearBtn: $('sideClearBtn'),
@@ -1461,9 +1505,33 @@
   if (els.pdfPanelPickBtn) els.pdfPanelPickBtn.addEventListener('click', () => openLibraryModal(true));
   if (els.pdfPanelEmptyPickBtn) els.pdfPanelEmptyPickBtn.addEventListener('click', () => openLibraryModal(true));
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
     const c = getActive();
-    if (c && c.pdfOpen) togglePdfPanel(false);
+    const panelOpen = c && c.pdfOpen;
+    if (e.key === 'Escape') {
+      if (panelOpen) togglePdfPanel(false);
+      return;
+    }
+    if (!panelOpen || !pdfState.pdfDoc) return;
+    // Don't hijack keys while the person is typing anywhere (composer, side chat, etc.)
+    const tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'TEXTAREA' || tag === 'INPUT' || (document.activeElement && document.activeElement.isContentEditable)) return;
+
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      e.preventDefault();
+      els.pdfPagePrev && els.pdfPagePrev.click();
+    } else if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+      e.preventDefault();
+      els.pdfPageNext && els.pdfPageNext.click();
+    } else if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      setPdfZoom(pdfState.scale + 0.2);
+    } else if (e.key === '-' || e.key === '_') {
+      e.preventDefault();
+      setPdfZoom(pdfState.scale - 0.2);
+    } else if (e.key === '0') {
+      e.preventDefault();
+      setPdfZoom(1.35);
+    }
   });
 
   // Sync the panel body (empty state vs. viewer) to whichever conversation is active.
@@ -1478,12 +1546,13 @@
     if (doc) {
       const url = LIBRARY_PATH + doc.file;
       if (els.pdfPanelNewTab) els.pdfPanelNewTab.href = url;
-      if (pdfState.file !== doc.file) loadPdfIntoPanel(doc.file, doc.lastPage || 1, doc.viewMode || 'page');
+      if (pdfState.file !== doc.file) loadPdfIntoPanel(doc.file, doc.lastPage || 1, doc.viewMode || 'page', doc.zoom || 1.35);
     }
   }
 
   // ---- pdf.js-backed page renderer: gives us a selectable text layer over a canvas, which the
   // browser's native <iframe> PDF viewer can't offer, so drag-to-select-into-chat works. ----
+  const PDF_MIN_SCALE = 0.5, PDF_MAX_SCALE = 3.5;
   const pdfState = { file: null, pdfDoc: null, pageNum: 1, numPages: 0, scale: 1.35, ocrPages: {}, rendering: false, viewMode: 'page', scrollObserver: null, scrollRendered: new Set() };
   const PDF_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -1494,23 +1563,26 @@
     els.pdfPanelStatus.classList.add('show');
   }
 
-  // Persist which page (and which view mode) this document was left on, so reopening the panel —
-  // or switching back to this conversation — picks up right where the user left off.
-  function rememberPdfPosition(pageNum, viewMode){
+  // Persist which page (and which view mode / zoom) this document was left on, so reopening the
+  // panel — or switching back to this conversation — picks up right where the user left off.
+  function rememberPdfPosition(pageNum, viewMode, zoom){
     const c = getActive();
     if (!c || !c.pdfDoc || c.pdfDoc.file !== pdfState.file) return;
     if (typeof pageNum === 'number') c.pdfDoc.lastPage = pageNum;
     if (viewMode) c.pdfDoc.viewMode = viewMode;
+    if (typeof zoom === 'number') c.pdfDoc.zoom = zoom;
     persistAll();
   }
 
-  async function loadPdfIntoPanel(file, startPage, viewMode){
+  async function loadPdfIntoPanel(file, startPage, viewMode, startScale){
     pdfState.file = file;
     pdfState.pdfDoc = null;
     pdfState.pageNum = startPage || 1;
     pdfState.ocrPages = {};
     pdfState.scrollRendered = new Set();
     pdfState.viewMode = viewMode || 'page';
+    pdfState.scale = startScale || 1.35;
+    updateZoomIndicator();
     setPdfStatus('Loading document\u2026', true);
     try {
       if (!window.pdfjsLib) throw new Error('PDF engine unavailable');
@@ -1566,6 +1638,7 @@
         // Scanned / image-only page — fall back to OCR so the page is still selectable.
         await ocrRenderPage(n, canvas, els.pdfTextLayer, viewport);
       }
+      drawHighlightsForLayer(els.pdfTextLayer, n);
     } catch (err) {
       setPdfStatus('Couldn\u2019t render this page: ' + err.message);
     } finally {
@@ -1578,6 +1651,7 @@
     const doc = pdfState.pdfDoc;
     if (!doc || !els.pdfScrollWrap) return;
     els.pdfScrollWrap.innerHTML = '';
+    pdfState.scrollRendered = new Set(); // rebuilding slots (new doc or new zoom) invalidates cached renders
     if (pdfState.scrollObserver) pdfState.scrollObserver.disconnect();
 
     // Build placeholder slots for every page up front (sized via a cheap first-page probe),
@@ -1586,7 +1660,7 @@
     const baseViewport = firstPage.getViewport({ scale: pdfState.scale });
     for (let i = 1; i <= doc.numPages; i++) {
       const slot = document.createElement('div');
-      slot.className = 'pdf-scroll-page';
+      slot.className = 'pdf-scroll-page pdf-skel';
       slot.dataset.page = i;
       slot.style.width = baseViewport.width + 'px';
       slot.style.height = baseViewport.height + 'px';
@@ -1641,6 +1715,7 @@
       slot.style.width = viewport.width + 'px';
       slot.style.height = viewport.height + 'px';
       await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      slot.classList.remove('pdf-skel');
 
       const textContent = await page.getTextContent();
       textLayer.style.width = viewport.width + 'px';
@@ -1651,6 +1726,7 @@
       } else {
         await ocrRenderPage(n, canvas, textLayer, viewport);
       }
+      drawHighlightsForLayer(textLayer, n);
     } catch (err) {
       pdfState.scrollRendered.delete(n); // allow retry if it scrolls back into view
     }
@@ -1785,6 +1861,7 @@
 
   function updatePageIndicator(){
     if (els.pdfPageIndicator) els.pdfPageIndicator.textContent = pdfState.numPages ? (pdfState.pageNum + ' / ' + pdfState.numPages) : '\u2013 / \u2013';
+    updateAttachBtnState();
   }
   els.pdfPagePrev && els.pdfPagePrev.addEventListener('click', () => {
     if (pdfState.viewMode === 'scroll') {
@@ -1801,6 +1878,36 @@
     } else {
       renderPdfPage(pdfState.pageNum + 1);
     }
+  });
+
+  /* ---- Zoom controls (+/-/fit-width), remembered per document ---- */
+  function updateZoomIndicator(){
+    if (els.pdfZoomIndicator) els.pdfZoomIndicator.textContent = Math.round((pdfState.scale / 1.35) * 100) + '%';
+  }
+  async function setPdfZoom(scale){
+    scale = Math.max(PDF_MIN_SCALE, Math.min(PDF_MAX_SCALE, scale));
+    if (Math.abs(scale - pdfState.scale) < 0.001 || !pdfState.pdfDoc) return;
+    pdfState.scale = scale;
+    updateZoomIndicator();
+    rememberPdfPosition(pdfState.pageNum, pdfState.viewMode, scale);
+    if (pdfState.viewMode === 'scroll') {
+      // Rebuild scroll slots at the new scale, then restore the same reading position.
+      await setupScrollMode(pdfState.pageNum);
+    } else {
+      await renderPdfPage(pdfState.pageNum);
+    }
+  }
+  els.pdfZoomIn && els.pdfZoomIn.addEventListener('click', () => setPdfZoom(pdfState.scale + 0.2));
+  els.pdfZoomOut && els.pdfZoomOut.addEventListener('click', () => setPdfZoom(pdfState.scale - 0.2));
+  els.pdfZoomFitWidth && els.pdfZoomFitWidth.addEventListener('click', async () => {
+    if (!pdfState.pdfDoc) return;
+    try {
+      const page = await pdfState.pdfDoc.getPage(pdfState.pageNum);
+      const naturalViewport = page.getViewport({ scale: 1 });
+      const availWidth = (els.pdfPanelView ? els.pdfPanelView.clientWidth : 500) - 28; // minus panel padding
+      const fitScale = Math.max(PDF_MIN_SCALE, Math.min(PDF_MAX_SCALE, availWidth / naturalViewport.width));
+      await setPdfZoom(fitScale);
+    } catch {}
   });
 
   // Called from the library list (see openPdfViewer below) to load a PDF into the resizable panel
@@ -1846,7 +1953,22 @@
       const sel = window.getSelection();
       const text = sel ? sel.toString().trim() : '';
       layer.setAttribute('draggable', text ? 'true' : 'false');
+      showSelToolbarFor(layer, text);
     });
+  }
+
+  // Inserts text into the main composer at the current cursor position (shared by drag-drop and
+  // the selection toolbar's "Add to chat" action).
+  function insertIntoComposer(text){
+    if (!els.messageInput || !text) return;
+    const el = els.messageInput;
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    el.value = el.value.slice(0, start) + text + el.value.slice(end);
+    el.dispatchEvent(new Event('input'));
+    el.focus();
+    const pos = start + text.length;
+    el.setSelectionRange(pos, pos);
   }
 
   if (els.messageInput) {
@@ -1866,18 +1988,192 @@
       if (!text) return;
       e.preventDefault();
       els.messageInput.classList.remove('pdf-drop-target');
-      const el = els.messageInput;
-      const start = el.selectionStart ?? el.value.length;
-      const end = el.selectionEnd ?? el.value.length;
-      const insert = (el.value.length ? '' : '') + text;
-      el.value = el.value.slice(0, start) + insert + el.value.slice(end);
-      el.dispatchEvent(new Event('input'));
-      el.focus();
-      const pos = start + insert.length;
-      el.setSelectionRange(pos, pos);
+      insertIntoComposer(text);
       currentDragText = '';
     });
   }
+
+  /* ---- Selection popup toolbar: Explain / Add to chat / Highlight / Copy ---- */
+  let pdfSelState = { text: '', layer: null, range: null };
+  function showSelToolbarFor(layer, text){
+    if (!els.pdfSelToolbar) return;
+    if (!text) { hideSelToolbar(); return; }
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) { hideSelToolbar(); return; }
+    const range = sel.getRangeAt(0);
+    pdfSelState = { text, layer, range: range.cloneRange() };
+    const rect = range.getBoundingClientRect();
+    if (!rect || (!rect.width && !rect.height)) { hideSelToolbar(); return; }
+    const tb = els.pdfSelToolbar;
+    tb.classList.add('show');
+    // Position above the selection, centered, clamped so it can't run off the left/right edge.
+    const tbWidth = tb.offsetWidth || 220;
+    let left = rect.left + rect.width / 2 - tbWidth / 2;
+    left = Math.max(8, Math.min(window.innerWidth - tbWidth - 8, left));
+    let top = rect.top - 44;
+    if (top < 8) top = rect.bottom + 10; // flip below if too close to the top of the viewport
+    tb.style.left = left + 'px';
+    tb.style.top = top + 'px';
+  }
+  function hideSelToolbar(){
+    if (els.pdfSelToolbar) els.pdfSelToolbar.classList.remove('show');
+  }
+  // Hide on any click outside the toolbar/text layer, and on scroll (position would go stale).
+  document.addEventListener('mousedown', (e) => {
+    if (els.pdfSelToolbar && !els.pdfSelToolbar.contains(e.target) && !e.target.closest('.pdf-text-layer')) hideSelToolbar();
+  });
+  els.pdfPanelView && els.pdfPanelView.addEventListener('scroll', hideSelToolbar, { passive: true });
+
+  els.pdfSelToolbar && els.pdfSelToolbar.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn || !pdfSelState.text) return;
+    const action = btn.dataset.action;
+    const text = pdfSelState.text;
+    if (action === 'copy') {
+      navigator.clipboard?.writeText(text).then(() => showToast('Copied')).catch(() => showToast('Couldn\u2019t copy', true));
+    } else if (action === 'add') {
+      insertIntoComposer(text);
+      showToast('Added to message box');
+    } else if (action === 'explain') {
+      insertIntoComposer('Explain this: \u201c' + (text.length > 400 ? text.slice(0, 400) + '\u2026' : text) + '\u201d');
+      sendMessage();
+    } else if (action === 'highlight') {
+      persistPdfHighlight(pdfSelState.layer, pdfSelState.range);
+    }
+    hideSelToolbar();
+    window.getSelection()?.removeAllRanges();
+  });
+
+  // Persist a highlight as a fraction of the page's unscaled size, so it re-draws correctly at
+  // any zoom level or on reload. Stored per document, keyed by page number.
+  function persistPdfHighlight(layer, range){
+    if (!layer || !range) return;
+    const c = getActive();
+    if (!c || !c.pdfDoc) return;
+    const pageEl = layer.closest('.pdf-scroll-page') || els.pdfPageLayer;
+    const pageNum = pageEl && pageEl.dataset ? Number(pageEl.dataset.page) || pdfState.pageNum : pdfState.pageNum;
+    const pageRect = layer.getBoundingClientRect();
+    const rects = Array.from(range.getClientRects());
+    if (!rects.length || !pageRect.width || !pageRect.height) return;
+    const newMarks = rects.map(r => ({
+      x: (r.left - pageRect.left) / pageRect.width,
+      y: (r.top - pageRect.top) / pageRect.height,
+      w: r.width / pageRect.width,
+      h: r.height / pageRect.height
+    }));
+    c.pdfDoc.highlights = c.pdfDoc.highlights || {};
+    c.pdfDoc.highlights[pageNum] = (c.pdfDoc.highlights[pageNum] || []).concat(newMarks);
+    persistAll();
+    drawHighlightsForLayer(layer, pageNum);
+    showToast('Highlighted');
+  }
+  function drawHighlightsForLayer(layer, pageNum){
+    const c = getActive();
+    const marks = c && c.pdfDoc && c.pdfDoc.highlights && c.pdfDoc.highlights[pageNum];
+    layer.querySelectorAll('.pdf-highlight-mark').forEach(el => el.remove());
+    if (!marks || !marks.length) return;
+    const frag = document.createDocumentFragment();
+    marks.forEach(m => {
+      const mark = document.createElement('div');
+      mark.className = 'pdf-highlight-mark';
+      mark.style.left = (m.x * 100) + '%';
+      mark.style.top = (m.y * 100) + '%';
+      mark.style.width = (m.w * 100) + '%';
+      mark.style.height = (m.h * 100) + '%';
+      frag.appendChild(mark);
+    });
+    layer.appendChild(frag);
+  }
+
+  /* ---- Attach current PDF page (or a selection) as context for the next chat message ----
+     Kept separate from "Add to chat" (item 3): attaching folds the text in as background context
+     for the model via the system prompt, shown as a dismissible chip, rather than dropping raw
+     text into the visible message the person is typing. ---- */
+  let pendingPdfAttachments = []; // [{ id, label, text }]
+
+  function renderAttachChips(){
+    if (!els.pdfAttachChipRow) return;
+    els.pdfAttachChipRow.innerHTML = '';
+    els.pdfAttachChipRow.style.display = pendingPdfAttachments.length ? 'flex' : 'none';
+    pendingPdfAttachments.forEach(att => {
+      const chip = document.createElement('div');
+      chip.className = 'pdf-attach-chip';
+      const label = document.createElement('span');
+      label.className = 'pac-label';
+      label.textContent = '\ud83d\udcce ' + att.label;
+      const remove = document.createElement('button');
+      remove.className = 'pac-remove';
+      remove.type = 'button';
+      remove.textContent = '\u00d7';
+      remove.title = 'Remove attachment';
+      remove.addEventListener('click', () => {
+        pendingPdfAttachments = pendingPdfAttachments.filter(a => a.id !== att.id);
+        renderAttachChips();
+        updateAttachBtnState();
+      });
+      chip.appendChild(label);
+      chip.appendChild(remove);
+      els.pdfAttachChipRow.appendChild(chip);
+    });
+  }
+  function updateAttachBtnState(){
+    if (!els.pdfAttachPageBtn) return;
+    const c = getActive();
+    const attachedThisPage = c && c.pdfDoc && pendingPdfAttachments.some(a => a.id === c.pdfDoc.file + '#' + pdfState.pageNum);
+    els.pdfAttachPageBtn.classList.toggle('attached', !!attachedThisPage);
+    els.pdfAttachPageBtn.title = attachedThisPage ? 'This page is attached to your next message' : 'Attach this page to your next message';
+  }
+
+  // Gets text for a given page, using the extracted text layer if we have it, otherwise OCR
+  // (running OCR on demand if this page hasn't been read yet).
+  async function getPageText(n){
+    const cacheKey = pdfState.file + '#' + n;
+    if (pdfState.ocrPages[cacheKey]) return pdfState.ocrPages[cacheKey].map(w => w.text).join(' ');
+    try {
+      const page = await pdfState.pdfDoc.getPage(n);
+      const textContent = await page.getTextContent();
+      const text = textContent.items.map(it => it.str).join(' ').trim();
+      if (text) return text;
+      // No embedded text — OCR this page to get something attachable.
+      const viewport = page.getViewport({ scale: pdfState.scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width; canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      await ensureTesseract();
+      const { data } = await window.Tesseract.recognize(canvas.toDataURL('image/png'), 'eng');
+      const words = (data.words || []).filter(w => w.text && w.text.trim());
+      pdfState.ocrPages[cacheKey] = words;
+      return words.map(w => w.text).join(' ');
+    } catch (err) {
+      return '';
+    }
+  }
+
+  els.pdfAttachPageBtn && els.pdfAttachPageBtn.addEventListener('click', async () => {
+    const c = getActive();
+    if (!c || !c.pdfDoc || !pdfState.pdfDoc) { showToast('Open a PDF first', true); return; }
+    const n = pdfState.pageNum;
+    const id = pdfState.file + '#' + n;
+    if (pendingPdfAttachments.some(a => a.id === id)) {
+      // Toggle off if clicked again on the same page.
+      pendingPdfAttachments = pendingPdfAttachments.filter(a => a.id !== id);
+      renderAttachChips();
+      updateAttachBtnState();
+      return;
+    }
+    showToast('Reading page ' + n + '\u2026');
+    const text = await getPageText(n);
+    if (!text) { showToast('Couldn\u2019t read text from this page', true); return; }
+    const docTitle = c.pdfDoc.title || c.pdfDoc.file;
+    pendingPdfAttachments.push({
+      id,
+      label: docTitle + ' \u2014 p.' + n,
+      text: 'Page ' + n + ' of "' + docTitle + '":\n' + text
+    });
+    renderAttachChips();
+    updateAttachBtnState();
+    showToast('Page ' + n + ' attached \u2014 it\u2019ll go with your next message');
+  });
 
   // Drag-to-resize the panel's width from its left edge.
   (function setupPdfResize(){
@@ -2049,7 +2345,11 @@
   let busy = false;
   async function sendMessage(){
     if (busy) return;
-    const text = els.messageInput.value.trim();
+    let text = els.messageInput.value.trim();
+    if (!text && pendingPdfAttachments.length) {
+      // Allow sending with just an attached page and no typed text — default to asking about it.
+      text = 'Take a look at the attached PDF page' + (pendingPdfAttachments.length > 1 ? 's' : '') + ' and tell me what\u2019s important here.';
+    }
     if (!text) return;
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
@@ -2081,6 +2381,13 @@
     const payloadMessages = [];
     const sys = buildSystemMessages(convo);
     if (sys.length) payloadMessages.push({ role: 'system', content: sys.join('\n\n') });
+    // Attachments are one-shot: once folded into this request, clear the chips so they don't
+    // silently carry over into an unrelated later message.
+    if (pendingPdfAttachments.length) {
+      pendingPdfAttachments = [];
+      renderAttachChips();
+      updateAttachBtnState();
+    }
     // walk the active branch path (not the whole flat array) for conversation context
     pathTo(convo, userMsg.id).forEach(m => payloadMessages.push({ role: m.role, content: m.content }));
 
@@ -2435,6 +2742,13 @@
   function buildSystemMessages(convo){
     const sys = [];
     if (applied.system.trim()) sys.push(applied.system.trim());
+    // PDF page/selection attachments queued from the reading panel (see "Attach this page").
+    // Folded in as context here rather than into the visible user message, so the chat stays
+    // readable while the model still sees the full page text.
+    if (pendingPdfAttachments.length) {
+      const joined = pendingPdfAttachments.map(a => a.text).join('\n\n---\n\n');
+      sys.push("The person has attached the following page" + (pendingPdfAttachments.length > 1 ? 's' : '') + " from a PDF they're reading alongside this chat. Use it as context for their next message where relevant, and quote or reference specifics from it when helpful:\n\n" + joined);
+    }
     // Requests sent from the Topics browser are tagged with a hidden marker so the tutoring
     // directive applies to that turn without permanently changing the conversation's system prompt.
     const lastUser = convo && convo.messages.length ? convo.messages[convo.messages.length - 1] : null;
@@ -2803,6 +3117,7 @@
   syncModesToggle();
   syncDualToggle();
   syncPdfToggle();
+  renderAttachChips();
 })();
 </script>
 </body>
