@@ -2638,16 +2638,25 @@
 
   /* ---------------- CFA Level I topics browser ---------------- */
   // Directive appended to every "explain this topic" request sent from the Topics browser, so the
-  // model treats it as an exam-oriented CFA Level I tutoring request regardless of whatever
-  // response Modes happen to be active in this conversation.
-  const TOPIC_EXPLAIN_DIRECTIVE = "You are acting as a knowledgeable tutor for the subject the topic below is drawn from (CFA Level I curriculum, or an Indian financial-system/economy reference text — infer which from the topic and volume title, and calibrate accordingly). The person picked one specific topic from the outline below to have explained in detail. Cover, in order: (1) a plain-language definition of the concept, (2) the underlying mechanics or reasoning — not just a restatement, (3) any key formula(s), figures, or statutory provisions involved, defined term by term, with a worked example if the topic is quantitative or procedural, (4) how this topic is typically tested or applied in practice (exam context for CFA topics; policy/regulatory context for Indian financial-system or economy topics) and common misconceptions, and (5) how it connects to neighboring topics in the same module. Be thorough and study-focused — this is reference material, not a quick definition.";
+  // model treats it as a study-tutoring request regardless of whatever response Modes happen to be
+  // active in this conversation. The source topic lists are scraped from book tables of contents,
+  // so entries are sometimes noisy (a figure caption, a repeated ALL-CAPS section header, a bare
+  // fragment) rather than a clean concept name — this directive tells the model how to handle that
+  // instead of dutifully explaining a caption as if it were a concept.
+  const TOPIC_EXPLAIN_DIRECTIVE = "You are acting as a knowledgeable tutor for the subject this topic is drawn from. Infer the subject from the volume/module title and the topic itself: CFA Level I curriculum volumes call for exam-oriented, formula-heavy tutoring; the Indian Financial System and Indian Economy volumes call for policy- and regulation-oriented explanation, since there's no exam formula to drill.\n\nFirst, silently check what kind of entry the topic actually is, using the sibling topics list (if provided) to place it in context:\n- If it's a genuine, well-formed concept name, teach it directly.\n- If it reads like a figure/table caption, a repeated ALL-CAPS restatement of a heading, or a bare fragment (e.g. a caption, a lone acronym, a partial sentence cut off mid-thought), don't explain the literal fragment. Instead identify the real underlying concept it's illustrating or introducing \u2014 using the module title and sibling topics as context \u2014 name that concept explicitly in your first sentence so the person knows what you inferred and why, and then teach that concept properly.\n- If it's genuinely too fragmentary to confidently reconstruct (e.g. an isolated page reference or a single stray word with no context clue), say so plainly in one sentence, name your best guess at the intended topic based on the module, and offer to explain that instead of guessing silently.\n\nOnce you know the real concept, cover, in order: (1) a plain-language definition, (2) the underlying mechanics or reasoning \u2014 not just a restatement, (3) any key formula(s), figures, or statutory provisions involved, defined term by term, with a worked example if the topic is quantitative or procedural \u2014 skip this step entirely for purely descriptive/qualitative topics rather than forcing a formula that doesn't exist, (4) how this topic is typically tested or applied in practice (exam context for CFA topics; policy/regulatory context for the Indian financial-system or economy topics) and common misconceptions, and (5) how it connects to the neighboring topics in the same module. Be thorough and study-focused \u2014 this is reference material, not a quick definition \u2014 but don't pad a simple descriptive topic with manufactured structure it doesn't need.";
 
   function escapeAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function escapeText(s){ return escapeAttr(s); }
 
-  function selectTopic(volTitle, modTitle, topic){
+  function selectTopic(volTitle, modTitle, topic, siblingTopics){
     closeTopicsModal();
-    const prompt = 'Give me a detailed explanation of "' + topic + '" from ' + volTitle + ' \u2192 ' + modTitle + '. Cover the core concept, the mechanics/reasoning behind it, any key formulas or figures with a worked example if applicable, and how it tends to be tested or applied in practice.';
+    // Give the model the rest of the module's topic list as context. TOC-scraped topics are
+    // sometimes noisy — a figure caption, a repeated all-caps section header, a stray fragment —
+    // and without seeing what else is in the module, the model has no way to tell that apart from
+    // a real concept, or to recover the actual subject if the clicked label is only a fragment of it.
+    const siblings = (siblingTopics || []).filter(t => t !== topic);
+    const siblingList = siblings.length ? ('\n\nOther topics listed in this same module (for context only — do not explain these, just use them to place "' + topic + '" correctly): ' + siblings.join(', ')) : '';
+    const prompt = 'Give me a detailed explanation of "' + topic + '" from ' + volTitle + ' \u2192 ' + modTitle + '.' + siblingList;
     els.messageInput.value = prompt;
     els.messageInput.dispatchEvent(new Event('input'));
     sendMessage();
@@ -2692,7 +2701,7 @@
           btn.type = 'button';
           btn.className = 'topic-item';
           btn.textContent = t;
-          btn.addEventListener('click', () => selectTopic('Volume ' + vol.num + ' — ' + vol.title, 'Module ' + mod.num + ' — ' + mod.title, t));
+          btn.addEventListener('click', () => selectTopic('Volume ' + vol.num + ' — ' + vol.title, 'Module ' + mod.num + ' — ' + mod.title, t, mod.topics));
           mbody.appendChild(btn);
         });
         modEl.appendChild(mhead);
@@ -2734,7 +2743,7 @@
       btn.innerHTML = '<span class="ti-topic"></span><span class="ti-path"></span>';
       btn.querySelector('.ti-topic').textContent = r.t;
       btn.querySelector('.ti-path').textContent = 'Vol ' + r.vol.num + ' · ' + r.mod.title;
-      btn.addEventListener('click', () => selectTopic('Volume ' + r.vol.num + ' — ' + r.vol.title, 'Module ' + r.mod.num + ' — ' + r.mod.title, r.t));
+      btn.addEventListener('click', () => selectTopic('Volume ' + r.vol.num + ' — ' + r.vol.title, 'Module ' + r.mod.num + ' — ' + r.mod.title, r.t, r.mod.topics));
       wrap.appendChild(btn);
     });
     els.topicsBody.appendChild(wrap);
