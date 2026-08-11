@@ -2345,19 +2345,31 @@
   let busy = false;
   async function sendMessage(){
     if (busy) return;
-    let text = els.messageInput.value.trim();
-    if (!text && pendingPdfAttachments.length) {
+    let typed = els.messageInput.value.trim();
+    const attachmentsForThisSend = pendingPdfAttachments.slice();
+    if (!typed && attachmentsForThisSend.length) {
       // Allow sending with just an attached page and no typed text — default to asking about it.
-      text = 'Take a look at the attached PDF page' + (pendingPdfAttachments.length > 1 ? 's' : '') + ' and tell me what\u2019s important here.';
+      typed = 'Take a look at the attached PDF page' + (attachmentsForThisSend.length > 1 ? 's' : '') + ' and tell me what\u2019s important here.';
     }
-    if (!text) return;
+    if (!typed) return;
+
+    // Fold attached page text directly into the stored/sent message content — this is the same
+    // channel that already reliably reaches the model on every turn (via pathTo() below), unlike
+    // a system-role message whose handling can vary by backend/provider. The chat bubble still
+    // only *displays* what was typed (see meta line), so this stays invisible in the UI.
+    let text = typed;
+    if (attachmentsForThisSend.length) {
+      const joined = attachmentsForThisSend.map(a => a.text).join('\n\n---\n\n');
+      text = typed + '\n\n[Attached from PDF \u2014 ' + attachmentsForThisSend.map(a => a.label).join(', ') + ']\n' + joined;
+    }
+
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
     const apiKey = (applied.keys[provider] || '').trim();
 
     const convo = ensureActiveConversation();
     convo.provider = provider; convo.model = model;
-    if (convo.messages.length === 0) convo.title = text.slice(0, 46) + (text.length > 46 ? '…' : '');
+    if (convo.messages.length === 0) convo.title = typed.slice(0, 46) + (typed.length > 46 ? '…' : '');
 
     // new user message attaches under the current active leaf (branch point)
     const parentId = convo.activeLeaf || (convo.messages.length ? convo.messages[convo.messages.length - 1].id : null);
@@ -2367,7 +2379,12 @@
     convo.updatedAt = Date.now();
 
     els.emptyState.style.display = 'none';
-    renderBubble('user', text, { msgId: userMsg.id });
+    // Display only what was typed, with a small meta note if a page was attached — the full
+    // attached text still lives in userMsg.content and gets sent to the model.
+    renderBubble('user', typed, {
+      msgId: userMsg.id,
+      meta: attachmentsForThisSend.length ? ('\ud83d\udcce Attached: ' + attachmentsForThisSend.map(a => a.label).join(', ')) : undefined
+    });
     els.messageInput.value = '';
     els.messageInput.style.height = 'auto';
     if (els.charCount) els.charCount.textContent = '0';
@@ -2742,13 +2759,6 @@
   function buildSystemMessages(convo){
     const sys = [];
     if (applied.system.trim()) sys.push(applied.system.trim());
-    // PDF page/selection attachments queued from the reading panel (see "Attach this page").
-    // Folded in as context here rather than into the visible user message, so the chat stays
-    // readable while the model still sees the full page text.
-    if (pendingPdfAttachments.length) {
-      const joined = pendingPdfAttachments.map(a => a.text).join('\n\n---\n\n');
-      sys.push("The person has attached the following page" + (pendingPdfAttachments.length > 1 ? 's' : '') + " from a PDF they're reading alongside this chat. Use it as context for their next message where relevant, and quote or reference specifics from it when helpful:\n\n" + joined);
-    }
     // Requests sent from the Topics browser are tagged with a hidden marker so the tutoring
     // directive applies to that turn without permanently changing the conversation's system prompt.
     const lastUser = convo && convo.messages.length ? convo.messages[convo.messages.length - 1] : null;
