@@ -2639,27 +2639,71 @@
   /* ---------------- CFA Level I topics browser ---------------- */
   // Directive appended to every "explain this topic" request sent from the Topics browser, so the
   // model treats it as a study-tutoring request regardless of whatever response Modes happen to be
-  // active in this conversation. The source topic lists are scraped from book tables of contents,
-  // so entries are sometimes noisy (a figure caption, a repeated ALL-CAPS section header, a bare
-  // fragment) rather than a clean concept name — this directive tells the model how to handle that
-  // instead of dutifully explaining a caption as if it were a concept.
-  const TOPIC_EXPLAIN_DIRECTIVE = "You are acting as a knowledgeable tutor for the subject this topic is drawn from. Infer the subject from the volume/module title and the topic itself: CFA Level I curriculum volumes call for exam-oriented, formula-heavy tutoring; the Indian Financial System and Indian Economy volumes call for policy- and regulation-oriented explanation, since there's no exam formula to drill.\n\nFirst, silently check what kind of entry the topic actually is, using the sibling topics list (if provided) to place it in context:\n- If it's a genuine, well-formed concept name, teach it directly.\n- If it reads like a figure/table caption, a repeated ALL-CAPS restatement of a heading, or a bare fragment (e.g. a caption, a lone acronym, a partial sentence cut off mid-thought), don't explain the literal fragment. Instead identify the real underlying concept it's illustrating or introducing \u2014 using the module title and sibling topics as context \u2014 name that concept explicitly in your first sentence so the person knows what you inferred and why, and then teach that concept properly.\n- If it's genuinely too fragmentary to confidently reconstruct (e.g. an isolated page reference or a single stray word with no context clue), say so plainly in one sentence, name your best guess at the intended topic based on the module, and offer to explain that instead of guessing silently.\n\nOnce you know the real concept, cover, in order: (1) a plain-language definition, (2) the underlying mechanics or reasoning \u2014 not just a restatement, (3) any key formula(s), figures, or statutory provisions involved, defined term by term, with a worked example if the topic is quantitative or procedural \u2014 skip this step entirely for purely descriptive/qualitative topics rather than forcing a formula that doesn't exist, (4) how this topic is typically tested or applied in practice (exam context for CFA topics; policy/regulatory context for the Indian financial-system or economy topics) and common misconceptions, and (5) how it connects to the neighboring topics in the same module. Be thorough and study-focused \u2014 this is reference material, not a quick definition \u2014 but don't pad a simple descriptive topic with manufactured structure it doesn't need.";
+  // active in this conversation. One generic version, applicable to any topic from any book/module.
+  const TOPIC_EXPLAIN_DIRECTIVE = "You are acting as a knowledgeable tutor for whatever subject this topic belongs to, based on the volume and module it's listed under. The topic lists are scraped from book tables of contents, so an entry is sometimes a figure caption, a repeated ALL-CAPS restatement of a heading, or a bare fragment rather than a clean concept name — if that's the case here, say plainly what you inferred the real underlying concept to be (using the module title and any sibling topics given as context) before teaching it, rather than dutifully explaining the literal fragment.\n\nCover, in order: (1) a plain-language definition of the concept, (2) the underlying mechanics or reasoning — not just a restatement, (3) any key formula(s), figures, or provisions involved, defined term by term, with a worked example if the topic is quantitative or procedural — skip this step for purely descriptive topics rather than forcing a formula that doesn't apply, (4) how this topic is typically tested or applied in practice, and common misconceptions, and (5) how it connects to neighboring topics in the same module. Be thorough and study-focused — this is reference material, not a quick definition — but don't pad a simple topic with structure it doesn't need.";
 
   function escapeAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function escapeText(s){ return escapeAttr(s); }
 
-  function selectTopic(volTitle, modTitle, topic, siblingTopics){
-    closeTopicsModal();
-    // Give the model the rest of the module's topic list as context. TOC-scraped topics are
-    // sometimes noisy — a figure caption, a repeated all-caps section header, a stray fragment —
-    // and without seeing what else is in the module, the model has no way to tell that apart from
-    // a real concept, or to recover the actual subject if the clicked label is only a fragment of it.
+  // Stage 1 of the two-step flow: ask the model to turn a raw (possibly noisy) topic label into a
+  // clean, well-scoped study question, using the module context and sibling topics to disambiguate.
+  // Stage 2 (in selectTopic below) sends that generated question as the actual chat message, same
+  // as any normal turn — so every topic click is genuinely two separate AI calls, not a template.
+  const TOPIC_PROMPT_WRITER_SYSTEM = "You write a single, well-formed study question for a tutoring AI to answer next. You will be given a topic label pulled from a book's table of contents, the volume/module it's listed under, and other topic labels from the same module for context.\n\nThe topic label is sometimes noisy \u2014 a figure caption, a repeated ALL-CAPS restatement of a heading, or a bare fragment \u2014 rather than a clean concept name. Use the module title and sibling topics to figure out what the real underlying concept actually is, then write a question asking to have that real concept explained in depth: plain-language definition, the mechanics/reasoning behind it, any relevant formulas/figures/provisions with a worked example if it's quantitative or procedural, how it's typically tested or applied in practice, and how it connects to neighboring topics in the module \u2014 but only ask for the parts that genuinely apply to this topic, don't force structure a purely descriptive topic doesn't need.\n\nOutput ONLY the question itself, written as if the person is asking it directly (first person, e.g. \"Explain \u2026\" or \"Walk me through \u2026\"). No preamble, no meta-commentary about what you inferred, no quotation marks around the whole thing, no markdown. One paragraph.";
+
+  async function generateTopicPrompt(volTitle, modTitle, topic, siblingTopics){
+    const provider = applied.provider;
+    const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
+    const apiKey = (applied.keys[provider] || '').trim();
     const siblings = (siblingTopics || []).filter(t => t !== topic);
-    const siblingList = siblings.length ? ('\n\nOther topics listed in this same module (for context only — do not explain these, just use them to place "' + topic + '" correctly): ' + siblings.join(', ')) : '';
-    const prompt = 'Give me a detailed explanation of "' + topic + '" from ' + volTitle + ' \u2192 ' + modTitle + '.' + siblingList;
-    els.messageInput.value = prompt;
-    els.messageInput.dispatchEvent(new Event('input'));
-    sendMessage();
+    const userContent = 'Topic: "' + topic + '"\nVolume: ' + volTitle + '\nModule: ' + modTitle +
+      (siblings.length ? ('\nOther topics in this module: ' + siblings.join(', ')) : '');
+
+    const headers = { 'Content-Type': 'application/json', 'X-Provider': provider };
+    if (apiKey) headers[HEADER_NAMES[provider]] = apiKey;
+
+    const res = await fetch('/api/chat', {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: TOPIC_PROMPT_WRITER_SYSTEM },
+          { role: 'user', content: userContent }
+        ],
+        stream: false
+      })
+    });
+    const raw = await res.text();
+    let data; try { data = JSON.parse(raw); } catch { data = null; }
+    if (!res.ok) throw new Error((data && data.error && data.error.message) || raw || ('Request failed with status ' + res.status));
+    const generated = data?.choices?.[0]?.message?.content?.trim();
+    if (!generated) throw new Error('Empty response while generating the question');
+    return generated;
+  }
+
+  async function selectTopic(volTitle, modTitle, topic, siblingTopics){
+    closeTopicsModal();
+    showToast('Crafting a question about \u201c' + topic + '\u201d\u2026');
+    els.messageInput.value = '';
+    els.messageInput.placeholder = 'Writing a question about "' + topic + '"\u2026';
+    els.messageInput.disabled = true;
+    try {
+      const generatedPrompt = await generateTopicPrompt(volTitle, modTitle, topic, siblingTopics);
+      els.messageInput.value = generatedPrompt;
+      els.messageInput.dispatchEvent(new Event('input'));
+      await sendMessage(); // stage 2: the generated question is sent as a normal message
+    } catch (err) {
+      showToast('Couldn\u2019t generate a question for this topic: ' + err.message, true);
+      // Fall back to a plain, still-reasonable question rather than leaving the person stuck.
+      const siblings = (siblingTopics || []).filter(t => t !== topic);
+      const siblingList = siblings.length ? ('\n\nOther topics listed in this same module (for context only): ' + siblings.join(', ')) : '';
+      els.messageInput.value = 'Give me a detailed explanation of "' + topic + '" from ' + volTitle + ' \u2192 ' + modTitle + '.' + siblingList;
+      els.messageInput.dispatchEvent(new Event('input'));
+      await sendMessage();
+    } finally {
+      els.messageInput.disabled = false;
+      els.messageInput.placeholder = 'Message Nexus\u2026';
+    }
   }
 
   function renderTopicsTree(){
