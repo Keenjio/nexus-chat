@@ -397,6 +397,12 @@
   .msg{display:block;animation:rise .22s ease both;padding:14px 0;}
   @keyframes rise{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
   .avatar{display:none;}
+  /* Small dot marker on the person's own messages, so user vs. assistant is identifiable at a
+     glance without reintroducing a full avatar/label layout. */
+  .msg.user .bubble-wrap{position:relative;}
+  .msg.user .user-dot{position:absolute;left:-16px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--nvidia,#10a37f);}
+  @media (max-width:640px){ .msg.user .user-dot{left:-13px;} }
+  .chat-highlight-mark{background:rgba(255,213,79,.32);border-radius:2px;box-decoration-break:clone;-webkit-box-decoration-break:clone;}
 
   .bubble-wrap{display:flex;flex-direction:column;gap:6px;max-width:100%;flex:1;}
   .bubble{padding:0;border-radius:0;font-size:15px;line-height:1.72;word-wrap:break-word;color:var(--text-hi);}
@@ -755,6 +761,12 @@
   <button type="button" data-action="highlight" title="Highlight this text">🖍️ Highlight</button>
   <button type="button" data-action="copy" title="Copy to clipboard">📋 Copy</button>
 </div>
+<div class="pdf-sel-toolbar" id="mainSelToolbar">
+  <button type="button" data-action="side" title="Ask about this in the side chat, without derailing the main conversation">💬 Ask side chat</button>
+  <button type="button" data-action="highlight" title="Highlight this text in the message">🖍️ Highlight</button>
+  <button type="button" data-action="save" title="Save this for later as a reusable snippet">🔖 Save for later</button>
+  <button type="button" data-action="copy" title="Copy to clipboard">📋 Copy</button>
+</div>
 <div class="side-scrim" id="sideScrim"></div>
 
 <!-- SETTINGS MODAL -->
@@ -795,16 +807,6 @@
         </div>
 
         <div>
-          <div class="field-label" id="keyLabel">NVIDIA NIM API key</div>
-          <div class="key-row" style="margin-top:8px;">
-            <input type="password" id="apiKeyInput" class="mono" placeholder="nvapi-••••••••••••••••" spellcheck="false" autocomplete="off">
-            <button type="button" class="visibility" id="toggleKeyVis">show</button>
-          </div>
-          <div id="keyValidationMsg"></div>
-          <p class="field-desc" id="keyDesc">Required. Get a free key at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a> — open any model card and click "Get API Key." You can also paste a whole Python/LangChain code snippet here (like the one on a model's page) and it'll pull out the key and model automatically. Stored only in this browser's localStorage and relayed through this site's own backend function, never logged or stored anywhere. <b>You must click "Save changes" below for the key to take effect</b> — closing this panel any other way discards unsaved changes.</p>
-        </div>
-
-        <div>
           <div class="field-label">Active model</div>
           <div class="model-input-row" style="margin-top:8px;">
             <input type="text" id="modelInput" class="mono" placeholder="meta/llama-3.1-8b-instruct" spellcheck="false">
@@ -816,7 +818,19 @@
         </div>
 
         <div>
-          <div class="field-label">Saved models <span style="color:var(--text-faint);font-weight:400;">(click to use, × to remove)</span></div>
+          <div class="field-label" id="keyLabel">API key for this model</div>
+          <p class="field-desc" style="margin-top:2px;margin-bottom:8px;" id="keyModelHint">Each model can have its own key — useful if you're spreading calls across multiple NVIDIA/OpenRouter accounts. Editing the key here applies only to <code class="mono" style="background:none;padding:0;" id="keyModelName">meta/llama-3.1-8b-instruct</code>.</p>
+          <div class="key-row" style="margin-top:8px;">
+            <input type="password" id="apiKeyInput" class="mono" placeholder="nvapi-••••••••••••••••" spellcheck="false" autocomplete="off">
+            <button type="button" class="visibility" id="toggleKeyVis">show</button>
+          </div>
+          <div id="keyValidationMsg"></div>
+          <p class="field-desc" id="keyDesc">Required. Get a free key at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a> — open any model card and click "Get API Key." You can also paste a whole Python/LangChain code snippet here (like the one on a model's page) and it'll pull out the key and model automatically. Stored only in this browser's localStorage and relayed through this site's own backend function, never logged or stored anywhere. <b>You must click "Save changes" below for the key to take effect</b> — closing this panel any other way discards unsaved changes.</p>
+          <p class="field-desc" id="keyFallbackNote" style="display:none;"></p>
+        </div>
+
+        <div>
+          <div class="field-label">Saved models <span style="color:var(--text-faint);font-weight:400;">(click to switch which model you're configuring, × to remove)</span></div>
           <div class="model-chips" id="modelChips" style="margin-top:9px;"></div>
         </div>
       </div>
@@ -1039,7 +1053,8 @@
   let lastModes = LS.get('nexus_last_modes', []); // sticky default: modes carry over into new chats until changed
   let draft = { // unsaved settings-modal state, applied to session config on Save
     provider: LS.get('nexus_provider', 'nvidia'),
-    keys: LS.get('nexus_keys', {}),
+    keys: LS.get('nexus_keys', {}),              // legacy: one shared key per provider, kept as a fallback for models without their own key
+    modelKeys: LS.get('nexus_model_keys', {}),    // { nvidia: { 'meta/llama-3.1-8b-instruct': 'nvapi-...', ... }, openrouter: {...} } — one key per model
     models: LS.get('nexus_models', SAVED_MODEL_SEEDS),
     activeModel: LS.get('nexus_active_model', {}),
     system: LS.get('nexus_system', ''),
@@ -1048,6 +1063,19 @@
     compact: LS.get('nexus_compact', false),
     pulse: LS.get('nexus_pulse', true)
   };
+  // Ensure both providers have a modelKeys bucket, even on a first run.
+  if (!draft.modelKeys.nvidia) draft.modelKeys.nvidia = {};
+  if (!draft.modelKeys.openrouter) draft.modelKeys.openrouter = {};
+
+  // Resolves the API key that should actually be used for a given provider+model: a key saved
+  // specifically for that model wins, falling back to the older provider-wide key (if any) so
+  // upgrading from a single shared key doesn't silently break existing setups.
+  function resolveApiKey(cfg, provider, model){
+    const perModel = cfg.modelKeys && cfg.modelKeys[provider] && cfg.modelKeys[provider][model];
+    if (perModel && perModel.trim()) return perModel.trim();
+    return (cfg.keys[provider] || '').trim();
+  }
+
   // live/applied config == draft until modal is opened, edited, then either saved or cancelled
   let applied = JSON.parse(JSON.stringify(draft));
 
@@ -1057,6 +1085,7 @@
     LS.set('nexus_last_modes', lastModes);
     LS.set('nexus_provider', applied.provider);
     LS.set('nexus_keys', applied.keys);
+    LS.set('nexus_model_keys', applied.modelKeys);
     LS.set('nexus_models', applied.models);
     LS.set('nexus_active_model', applied.activeModel);
     LS.set('nexus_system', applied.system);
@@ -1096,7 +1125,7 @@
     pdfDarkBtn: $('pdfDarkBtn'), pdfAttachPageBtn: $('pdfAttachPageBtn'), pdfAttachChipRow: $('pdfAttachChipRow'),
     pdfPagePrev: $('pdfPagePrev'), pdfPageNext: $('pdfPageNext'), pdfPageIndicator: $('pdfPageIndicator'),
     pdfZoomOut: $('pdfZoomOut'), pdfZoomIn: $('pdfZoomIn'), pdfZoomFitWidth: $('pdfZoomFitWidth'), pdfZoomIndicator: $('pdfZoomIndicator'),
-    pdfDragGhost: $('pdfDragGhost'), pdfSelToolbar: $('pdfSelToolbar'),
+    pdfDragGhost: $('pdfDragGhost'), pdfSelToolbar: $('pdfSelToolbar'), mainSelToolbar: $('mainSelToolbar'),
     sideThread: $('sideThread'), sideEmpty: $('sideEmpty'),
     sideMessageInput: $('sideMessageInput'), sideSendBtn: $('sideSendBtn'),
     sideCloseBtn: $('sideCloseBtn'), sideClearBtn: $('sideClearBtn'),
@@ -1107,6 +1136,7 @@
     tabs: document.querySelectorAll('.modal-tab'), panes: document.querySelectorAll('.modal-pane'),
     providerToggle: $('providerToggle'), keyLabel: $('keyLabel'), keyDesc: $('keyDesc'),
     apiKeyInput: $('apiKeyInput'), toggleKeyVis: $('toggleKeyVis'), keyValidationMsg: $('keyValidationMsg'),
+    keyModelHint: $('keyModelHint'), keyModelName: $('keyModelName'), keyFallbackNote: $('keyFallbackNote'),
     modelInput: $('modelInput'), modelDesc: $('modelDesc'), pinModelBtn: $('pinModelBtn'), modelChips: $('modelChips'),
     systemPrompt: $('systemPrompt'), promptChips: $('promptChips'), newPromptInput: $('newPromptInput'), addPromptBtn: $('addPromptBtn'),
     themeInk: $('themeInk'), themeGraphite: $('themeGraphite'), compactToggle: $('compactToggle'), pulseToggle: $('pulseToggle'),
@@ -1318,7 +1348,7 @@
     const leaf = c.activeLeaf || c.messages[c.messages.length - 1].id;
     const path = pathTo(c, leaf);
     path.forEach(m => {
-      const { wrap } = renderBubble(m.role, m.content, { provider: c.provider, meta: m.meta, msgId: m.id });
+      const { wrap, bubble } = renderBubble(m.role, m.content, { provider: c.provider, meta: m.meta, msgId: m.id });
       // branch switcher: if this message has siblings (other children of same parent), show 1/N controls
       const siblings = childrenOf(c, m.parentId);
       if (siblings.length > 1) {
@@ -1327,8 +1357,43 @@
       }
       // branch button on assistant messages, to start a new branch from here
       if (m.role === 'assistant') addBranchButton(wrap, c, m.id);
+      applyChatHighlights(bubble, c, m.id);
     });
     els.thread.scrollTop = els.thread.scrollHeight;
+  }
+
+  /* ---- Persisted highlights on main-chat messages: wraps saved substrings in <mark>-style spans.
+     Stored as exact substrings per message id, since chat text (unlike a fixed PDF page) reflows —
+     a plain string match-and-wrap survives reflow, font changes, and window resizing, where
+     coordinate-based marks (used for PDF highlights) would not. ---- */
+  function applyChatHighlights(bubbleEl, convo, msgId){
+    const marks = convo.chatHighlights && convo.chatHighlights[msgId];
+    if (!marks || !marks.length) return;
+    marks.forEach(snippet => wrapFirstTextMatch(bubbleEl, snippet));
+  }
+  // Walks text nodes looking for `snippet`; wraps the first match in a <mark>. Runs once per saved
+  // snippet, so repeated identical highlights each get their own wrap even across renders.
+  function wrapFirstTextMatch(root, snippet){
+    if (!snippet) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    let node;
+    while ((node = walker.nextNode())) {
+      const idx = node.nodeValue.indexOf(snippet);
+      if (idx === -1) continue;
+      const range = document.createRange();
+      range.setStart(node, idx);
+      range.setEnd(node, idx + snippet.length);
+      const mark = document.createElement('mark');
+      mark.className = 'chat-highlight-mark';
+      try { range.surroundContents(mark); } catch { /* selection crossed element boundaries — skip rather than corrupt the DOM */ }
+      return;
+    }
+  }
+  function persistChatHighlight(convo, msgId, snippet){
+    if (!snippet) return;
+    convo.chatHighlights = convo.chatHighlights || {};
+    convo.chatHighlights[msgId] = (convo.chatHighlights[msgId] || []).concat(snippet);
+    persistAll();
   }
 
   function addBranchSwitcher(wrap, convo, siblings, idx){
@@ -1391,6 +1456,12 @@
     avatar.textContent = role === 'user' ? 'YOU' : (opts.provider === 'openrouter' ? 'OR' : 'NV');
     const bwrap = document.createElement('div');
     bwrap.className = 'bubble-wrap';
+    if (role === 'user') {
+      const dot = document.createElement('span');
+      dot.className = 'user-dot';
+      dot.title = 'You';
+      bwrap.appendChild(dot);
+    }
     const bubble = document.createElement('div');
     bubble.className = 'bubble' + (opts.error ? ' error-bubble' : '');
     if (opts.typing) {
@@ -2110,6 +2181,81 @@
     layer.appendChild(frag);
   }
 
+  /* ---- Main-chat text-selection toolbar: select any text in a message bubble to ask the side
+     chat about it, highlight it, save it as a reusable snippet, or copy it. ---- */
+  let mainSelState = { text: '', msgId: null };
+  function showMainSelToolbarFor(text){
+    if (!els.mainSelToolbar) return;
+    if (!text) { hideMainSelToolbar(); return; }
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) { hideMainSelToolbar(); return; }
+    const range = sel.getRangeAt(0);
+    const bubbleEl = range.commonAncestorContainer.nodeType === 1
+      ? range.commonAncestorContainer.closest('.msg')
+      : range.commonAncestorContainer.parentElement?.closest('.msg');
+    const msgId = bubbleEl ? bubbleEl.dataset.msgId : null;
+    mainSelState = { text, msgId };
+    const rect = range.getBoundingClientRect();
+    if (!rect || (!rect.width && !rect.height)) { hideMainSelToolbar(); return; }
+    const tb = els.mainSelToolbar;
+    tb.classList.add('show');
+    const tbWidth = tb.offsetWidth || 260;
+    let left = rect.left + rect.width / 2 - tbWidth / 2;
+    left = Math.max(8, Math.min(window.innerWidth - tbWidth - 8, left));
+    let top = rect.top - 44;
+    if (top < 8) top = rect.bottom + 10;
+    tb.style.left = left + 'px';
+    tb.style.top = top + 'px';
+  }
+  function hideMainSelToolbar(){
+    if (els.mainSelToolbar) els.mainSelToolbar.classList.remove('show');
+  }
+  els.thread && els.thread.addEventListener('mouseup', (e) => {
+    // Ignore selections that started inside the composer or elsewhere — only text inside rendered
+    // messages should trigger this toolbar.
+    if (!e.target.closest('.msg')) { hideMainSelToolbar(); return; }
+    const sel = window.getSelection();
+    const text = sel ? sel.toString().trim() : '';
+    showMainSelToolbarFor(text);
+  });
+  document.addEventListener('mousedown', (e) => {
+    if (els.mainSelToolbar && !els.mainSelToolbar.contains(e.target) && !e.target.closest('.msg')) hideMainSelToolbar();
+  });
+  els.thread && els.thread.addEventListener('scroll', hideMainSelToolbar, { passive: true });
+
+  els.mainSelToolbar && els.mainSelToolbar.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn || !mainSelState.text) return;
+    const action = btn.dataset.action;
+    const text = mainSelState.text;
+    if (action === 'copy') {
+      navigator.clipboard?.writeText(text).then(() => showToast('Copied')).catch(() => showToast('Couldn\u2019t copy', true));
+    } else if (action === 'side') {
+      toggleSidePanel(true);
+      if (els.sideMessageInput) {
+        els.sideMessageInput.value = (els.sideMessageInput.value ? els.sideMessageInput.value + '\n\n' : '') + '\u201c' + text + '\u201d\n\n';
+        els.sideMessageInput.dispatchEvent(new Event('input'));
+        setTimeout(() => { els.sideMessageInput.focus(); els.sideMessageInput.setSelectionRange(els.sideMessageInput.value.length, els.sideMessageInput.value.length); }, 200);
+      }
+      showToast('Added to side chat \u2014 add your question and send');
+    } else if (action === 'save') {
+      applied.prompts = (applied.prompts || []).concat(text.length > 200 ? text.slice(0, 200) + '\u2026' : text);
+      draft.prompts = applied.prompts.slice();
+      persistAll();
+      showToast('Saved for later \u2014 find it in Settings \u2192 Saved snippets');
+    } else if (action === 'highlight') {
+      const convo = getActive();
+      if (convo && mainSelState.msgId) {
+        persistChatHighlight(convo, mainSelState.msgId, text);
+        const bubbleEl = document.querySelector('.msg[data-msg-id="' + mainSelState.msgId + '"] .bubble');
+        if (bubbleEl) wrapFirstTextMatch(bubbleEl, text);
+        showToast('Highlighted');
+      }
+    }
+    hideMainSelToolbar();
+    window.getSelection()?.removeAllRanges();
+  });
+
   /* ---- Attach current PDF page (or a selection) as context for the next chat message ----
      Kept separate from "Add to chat" (item 3): attaching folds the text in as background context
      for the model via the system prompt, shown as a dismissible chip, rather than dropping raw
@@ -2273,7 +2419,7 @@
     const convo = ensureActiveConversation();
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
-    const apiKey = (applied.keys[provider] || '').trim();
+    const apiKey = resolveApiKey(applied, provider, model);
 
     convo.sideMessages.push({ id: uid(), role: 'user', content: text });
     els.sideMessageInput.value = '';
@@ -2390,7 +2536,7 @@
 
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
-    const apiKey = (applied.keys[provider] || '').trim();
+    const apiKey = resolveApiKey(applied, provider, model);
 
     const convo = ensureActiveConversation();
     convo.provider = provider; convo.model = model;
@@ -2654,7 +2800,7 @@
   async function generateTopicPrompt(volTitle, modTitle, topic, siblingTopics){
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
-    const apiKey = (applied.keys[provider] || '').trim();
+    const apiKey = resolveApiKey(applied, provider, model);
     const siblings = (siblingTopics || []).filter(t => t !== topic);
     const userContent = 'Topic: "' + topic + '"\nVolume: ' + volTitle + '\nModule: ' + modTitle +
       (siblings.length ? ('\nOther topics in this module: ' + siblings.join(', ')) : '');
@@ -3052,17 +3198,55 @@
     }
   }
 
-  els.apiKeyInput.addEventListener('input', () => { draft.keys[draft.provider] = els.apiKeyInput.value; updateKeyValidation(); });
+  // The model currently shown in the "Active model" field is the one being configured — the key
+  // field below it always edits *that* model's own key, not one shared key for the whole provider.
+  function currentlyEditedModel(){
+    return els.modelInput.value.trim() || draft.activeModel[draft.provider] || DEFAULT_MODELS[draft.provider];
+  }
+
+  // Loads whatever key is saved for the given model into the key field, falling back to the
+  // legacy provider-wide key (shown with a note) if this specific model has never been given its
+  // own key yet — so existing single-key setups still work after upgrading to per-model keys.
+  function loadKeyFieldForModel(model){
+    if (!draft.modelKeys[draft.provider]) draft.modelKeys[draft.provider] = {};
+    const perModelKey = draft.modelKeys[draft.provider][model];
+    const legacyKey = draft.keys[draft.provider] || '';
+    els.apiKeyInput.value = perModelKey || '';
+    if (els.keyModelName) els.keyModelName.textContent = model;
+    if (els.keyFallbackNote) {
+      if (!perModelKey && legacyKey) {
+        els.keyFallbackNote.style.display = '';
+        els.keyFallbackNote.innerHTML = 'No key saved for this specific model yet — until you add one, it\'ll use your older shared ' + (draft.provider === 'nvidia' ? 'NVIDIA' : 'OpenRouter') + ' key as a fallback.';
+      } else {
+        els.keyFallbackNote.style.display = 'none';
+      }
+    }
+    updateKeyValidation();
+  }
+
+  els.apiKeyInput.addEventListener('input', () => {
+    const model = currentlyEditedModel();
+    if (!draft.modelKeys[draft.provider]) draft.modelKeys[draft.provider] = {};
+    draft.modelKeys[draft.provider][model] = els.apiKeyInput.value;
+    if (els.keyFallbackNote) els.keyFallbackNote.style.display = 'none'; // typing anything overrides the fallback note immediately
+    updateKeyValidation();
+  });
   els.apiKeyInput.addEventListener('paste', (e) => {
     const pasted = (e.clipboardData || window.clipboardData).getData('text');
     if (pasted.length > 60 && /model|api_key|Authorization/i.test(pasted)) {
       const { key, model } = extractKeyAndModelFromPaste(pasted);
       if (key) {
         e.preventDefault();
-        els.apiKeyInput.value = key;
-        draft.keys[draft.provider] = key;
+        // Model in the snippet wins if present, so the key gets attached to the model it actually
+        // belongs to rather than whatever happened to be in the field before pasting.
+        const targetModel = model || currentlyEditedModel();
         if (model) { els.modelInput.value = model; draft.activeModel[draft.provider] = model; }
+        els.apiKeyInput.value = key;
+        if (!draft.modelKeys[draft.provider]) draft.modelKeys[draft.provider] = {};
+        draft.modelKeys[draft.provider][targetModel] = key;
+        if (els.keyFallbackNote) els.keyFallbackNote.style.display = 'none';
         updateKeyValidation();
+        renderModelChips();
         showToast('Key' + (model ? ' and model' : '') + ' extracted from pasted snippet');
       }
     }
@@ -3080,7 +3264,10 @@
     populateModal(true);
   });
 
-  els.modelInput.addEventListener('input', () => { draft.activeModel[draft.provider] = els.modelInput.value; });
+  els.modelInput.addEventListener('input', () => {
+    draft.activeModel[draft.provider] = els.modelInput.value;
+    loadKeyFieldForModel(currentlyEditedModel());
+  });
   els.pinModelBtn.addEventListener('click', () => {
     const v = els.modelInput.value.trim();
     if (!v) return;
@@ -3094,16 +3281,30 @@
     const list = draft.models[draft.provider] || [];
     list.forEach(m => {
       const chip = document.createElement('div');
+      const hasOwnKey = !!(draft.modelKeys[draft.provider] && draft.modelKeys[draft.provider][m] && draft.modelKeys[draft.provider][m].trim());
       chip.className = 'model-chip' + (m === (draft.activeModel[draft.provider] || DEFAULT_MODELS[draft.provider]) ? ' active' : '');
       const label = document.createElement('span');
-      label.textContent = m.length > 34 ? m.slice(0, 32) + '…' : m;
-      label.title = m;
+      label.textContent = (hasOwnKey ? '\ud83d\udd11 ' : '') + (m.length > 32 ? m.slice(0, 30) + '…' : m);
+      label.title = m + (hasOwnKey ? ' — has its own saved key' : ' — no key of its own yet, uses the shared/fallback key');
       chip.appendChild(label);
       const x = document.createElement('button');
       x.className = 'mx'; x.type = 'button'; x.innerHTML = '×';
-      x.addEventListener('click', (e) => { e.stopPropagation(); draft.models[draft.provider] = draft.models[draft.provider].filter(x2 => x2 !== m); renderModelChips(); });
+      x.addEventListener('click', (e) => {
+        e.stopPropagation();
+        draft.models[draft.provider] = draft.models[draft.provider].filter(x2 => x2 !== m);
+        if (draft.modelKeys[draft.provider]) delete draft.modelKeys[draft.provider][m];
+        renderModelChips();
+      });
       chip.appendChild(x);
-      chip.addEventListener('click', () => { draft.activeModel[draft.provider] = m; els.modelInput.value = m; renderModelChips(); });
+      chip.addEventListener('click', () => {
+        // Clicking a chip both makes this the active model to chat with *and* switches the key
+        // field below to that model's own key, so "select a model" and "configure its key" are
+        // the same click instead of two separate steps.
+        draft.activeModel[draft.provider] = m;
+        els.modelInput.value = m;
+        loadKeyFieldForModel(m);
+        renderModelChips();
+      });
       els.modelChips.appendChild(chip);
     });
   }
@@ -3161,12 +3362,11 @@
 
   function populateModal(keepTab){
     [...els.providerToggle.querySelectorAll('.provider-card')].forEach(b => b.classList.toggle('active', b.dataset.p === draft.provider));
-    els.keyLabel.textContent = (draft.provider === 'nvidia' ? 'NVIDIA NIM' : 'OpenRouter') + ' API key';
+    els.keyLabel.textContent = 'API key for this model';
     els.apiKeyInput.placeholder = draft.provider === 'nvidia' ? 'nvapi-••••••••••••••••' : 'sk-or-••••••••••••••••';
-    els.apiKeyInput.value = draft.keys[draft.provider] || '';
     els.apiKeyInput.type = 'password'; els.toggleKeyVis.textContent = 'show';
-    updateKeyValidation();
     els.modelInput.value = draft.activeModel[draft.provider] || DEFAULT_MODELS[draft.provider];
+    loadKeyFieldForModel(currentlyEditedModel());
     els.modelDesc.innerHTML = draft.provider === 'nvidia'
       ? 'Smaller/lighter models are more likely to drop spaces or characters on long structured output like tables and figures. For reliable structured output, prefer a larger instruct model — browse the current catalog and exact model IDs at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>.'
       : 'Any OpenRouter model slug works, e.g. <code class="mono" style="background:none;padding:0;">anthropic/claude-3.5-sonnet</code>. Browse the full catalog at <a href="https://openrouter.ai/models" target="_blank" rel="noopener">openrouter.ai/models</a>.';
