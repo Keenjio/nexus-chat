@@ -1067,13 +1067,55 @@
   if (!draft.modelKeys.nvidia) draft.modelKeys.nvidia = {};
   if (!draft.modelKeys.openrouter) draft.modelKeys.openrouter = {};
 
-  // Resolves the API key that should actually be used for a given provider+model: a key saved
-  // specifically for that model wins, falling back to the older provider-wide key (if any) so
-  // upgrading from a single shared key doesn't silently break existing setups.
+  // Resolves the API key that should actually be used for a given provider+model. Priority:
+  // 1) a key from the repo's keys.json (see loadRemoteKeys below) — the same across every device
+  //    since it's just a fetched file, not per-browser localStorage
+  // 2) a key saved specifically for this model in this browser's Settings
+  // 3) the older provider-wide shared key, as a last-resort fallback
   function resolveApiKey(cfg, provider, model){
+    const entry = remoteKeys && remoteKeys.list && remoteKeys.list.find(e => e.provider === provider && e.model === model);
+    if (entry && entry.key && String(entry.key).trim()) return String(entry.key).trim();
+    const remoteDefault = remoteKeys && remoteKeys.list && remoteKeys.list.find(e => e.provider === provider && e.default);
+    if (remoteDefault && remoteDefault.key && String(remoteDefault.key).trim()) return String(remoteDefault.key).trim();
     const perModel = cfg.modelKeys && cfg.modelKeys[provider] && cfg.modelKeys[provider][model];
     if (perModel && perModel.trim()) return perModel.trim();
     return (cfg.keys[provider] || '').trim();
+  }
+
+  // ---- Remote keys.json: keeps API keys + their attached model in the repo (e.g.
+  // /keys/keys.json, served as a plain static file by Cloudflare Pages) so they're available
+  // from any device/browser without retyping them into Settings. Fetched once at load and
+  // cached; call loadRemoteKeys(true) to force a re-fetch (e.g. right after editing the file).
+  //
+  // Expected shape:
+  // {
+  //   "list": [
+  //     { "provider": "nvidia", "model": "meta/llama-3.1-8b-instruct", "key": "nvapi-...", "default": true },
+  //     { "provider": "nvidia", "model": "nvidia/nemotron-4-340b-instruct", "key": "nvapi-..." },
+  //     { "provider": "openrouter", "model": "anthropic/claude-3.5-sonnet", "key": "sk-or-...", "default": true }
+  //   ]
+  // }
+  // Each entry pairs one key with the one model it's for. "default" (optional, one per provider)
+  // is used as a fallback for any model in that provider that isn't listed explicitly, and also
+  // picks which model becomes active on load (see applyRemoteActiveModel below).
+  const REMOTE_KEYS_URL = '/keys/keys.json';
+  let remoteKeys = null;
+  let remoteKeysLoadError = null;
+  async function loadRemoteKeys(force){
+    if (remoteKeys && !force) return remoteKeys;
+    remoteKeysLoadError = null;
+    try {
+      const res = await fetch(REMOTE_KEYS_URL, { cache: 'no-store' });
+      if (!res.ok) throw new Error('keys.json responded with ' + res.status);
+      const data = await res.json();
+      if (!data || typeof data !== 'object' || !Array.isArray(data.list)) throw new Error('keys.json must be a JSON object with a "list" array');
+      remoteKeys = data;
+      applyRemoteActiveModel();
+    } catch (err) {
+      remoteKeysLoadError = err.message || String(err);
+      remoteKeys = {}; // fail closed to "no remote keys" — falls back to Settings-saved keys, nothing breaks
+    }
+    return remoteKeys;
   }
 
   // live/applied config == draft until modal is opened, edited, then either saved or cancelled
@@ -1093,6 +1135,27 @@
     LS.set('nexus_theme', applied.theme);
     LS.set('nexus_compact', applied.compact);
     LS.set('nexus_pulse', applied.pulse);
+  }
+
+  // Applies the "default" model+provider from keys.json (if present) as the active model/provider,
+  // and makes sure it's in the saved-models list so it shows up as a normal chip. This runs
+  // automatically right after keys.json loads, so opening the app on any device just works with
+  // whatever's set as default in the file — nothing to configure locally.
+  function applyRemoteActiveModel(){
+    if (!remoteKeys || !Array.isArray(remoteKeys.list)) return;
+    remoteKeys.list.forEach(entry => {
+      if (!entry.provider || !entry.model) return;
+      if (!applied.models[entry.provider]) applied.models[entry.provider] = [];
+      if (!applied.models[entry.provider].includes(entry.model)) applied.models[entry.provider].unshift(entry.model);
+      if (!draft.models[entry.provider]) draft.models[entry.provider] = [];
+      if (!draft.models[entry.provider].includes(entry.model)) draft.models[entry.provider].unshift(entry.model);
+      if (entry.default) {
+        applied.activeModel[entry.provider] = entry.model;
+        draft.activeModel[entry.provider] = entry.model;
+      }
+    });
+    persistAll();
+    if (typeof syncTopbar === 'function') syncTopbar();
   }
 
   const $ = id => document.getElementById(id);
@@ -2419,6 +2482,7 @@
     const convo = ensureActiveConversation();
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
+    await loadRemoteKeys(); // make sure repo-provided keys are loaded before resolving which key to use
     const apiKey = resolveApiKey(applied, provider, model);
 
     convo.sideMessages.push({ id: uid(), role: 'user', content: text });
@@ -2536,6 +2600,7 @@
 
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
+    await loadRemoteKeys(); // make sure repo-provided keys are loaded before resolving which key to use
     const apiKey = resolveApiKey(applied, provider, model);
 
     const convo = ensureActiveConversation();
@@ -2800,6 +2865,7 @@
   async function generateTopicPrompt(volTitle, modTitle, topic, siblingTopics){
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
+    await loadRemoteKeys(); // make sure repo-provided keys are loaded before resolving which key to use
     const apiKey = resolveApiKey(applied, provider, model);
     const siblings = (siblingTopics || []).filter(t => t !== topic);
     const userContent = 'Topic: "' + topic + '"\nVolume: ' + volTitle + '\nModule: ' + modTitle +
@@ -3406,6 +3472,7 @@
   syncDualToggle();
   syncPdfToggle();
   renderAttachChips();
+  loadRemoteKeys(); // fire-and-forget: fills in as soon as it lands, no blocking on first paint
 })();
 </script>
 </body>
