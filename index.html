@@ -2,8 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Nexus</title>
+
+<!-- PWA: installable as a standalone app on Chrome (desktop + Android) and other browsers -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="background-color" content="#0d0d0d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nexus">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Söhne:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Söhne+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -72,6 +85,10 @@
 
   /* Icon actions relocated into the topbar's right side (upper-right corner), replacing the rail. */
   .topbar-icons{display:flex;align-items:center;gap:2px;margin-left:4px;}
+  #installAppBtn{color:var(--nvidia,#10a37f);}
+  #installAppBtn:hover{background:var(--nvidia-glow,rgba(16,163,127,.14));color:var(--nvidia,#10a37f);}
+  @keyframes installPulse{0%,100%{box-shadow:0 0 0 0 rgba(16,163,127,.35);}50%{box-shadow:0 0 0 4px rgba(16,163,127,0);}}
+  #installAppBtn.pulse{animation:installPulse 2s ease-in-out 3;border-radius:8px;}
   .topbar-icons .rail-icon-btn{width:30px;height:30px;}
 
   /* ============ MAIN ============ */
@@ -696,6 +713,9 @@
         <span class="mcount" id="modesCount" style="display:none;">0</span>
       </button>
       <div class="topbar-icons">
+        <button type="button" class="rail-icon-btn" id="installAppBtn" aria-label="Install app" title="Install Nexus as an app" style="display:none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v13M12 16l-5-5M12 16l5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
         <button type="button" class="side-toggle" id="notesToggle" title="Notes — a free-form scratchpad, separate from the chat">
           <span class="ddot"></span>
           Notes
@@ -1316,6 +1336,7 @@
     pdfPagePrev: $('pdfPagePrev'), pdfPageNext: $('pdfPageNext'), pdfPageIndicator: $('pdfPageIndicator'),
     pdfZoomOut: $('pdfZoomOut'), pdfZoomIn: $('pdfZoomIn'), pdfZoomFitWidth: $('pdfZoomFitWidth'), pdfZoomIndicator: $('pdfZoomIndicator'),
     pdfDragGhost: $('pdfDragGhost'), pdfSelToolbar: $('pdfSelToolbar'), mainSelToolbar: $('mainSelToolbar'),
+    installAppBtn: $('installAppBtn'),
     notesToggle: $('notesToggle'), notesPanel: $('notesPanel'), notesCloseBtn: $('notesCloseBtn'),
     notesClearBtn: $('notesClearBtn'), notesNewInput: $('notesNewInput'), notesAddBtn: $('notesAddBtn'),
     notesList: $('notesList'),
@@ -3377,8 +3398,15 @@
         directive: "Activate Show Your Work Mode. Whenever a response includes a number, calculation, or claim that was derived rather than trivially known, show the actual steps behind it.\n\n1. For calculations, show the arithmetic or formula applied, not just the result.\n2. For derived conclusions, show the actual reasoning chain that produced them.\n3. For factual claims recalled rather than derived, say plainly that it's recalled from training knowledge, and flag it explicitly if it's the kind of fact that could have changed or be misremembered.\n4. If a claim can't be traced to a clear derivation or firm basis, say so directly instead of presenting it as settled." } ] },
     { group: '🗒️ Format & Layout', modes: [
       { id: 'sticky', name: 'Sticky Note Mode', desc: 'Breaks the topic into a board of short, scannable sticky notes instead of prose.',
-        directive: "Activate Sticky Note Mode. Instead of writing normal prose or a long structured answer, break the topic down into several short, self-contained sticky notes — the way someone would pin index cards on a board while studying, one focused idea per note, numbered in the order they should be read.\n\nOutput format is strict and must be followed exactly, with nothing before the first note and nothing after the last one (no intro sentence, no closing summary, no prose outside the notes):\n\n[[STICKY color=yellow kind=concept]]\nTitle: <a short 2-6 word title for this note>\n<the note's content: 1-3 short sentences, or a tight bullet list with '- ' bullets. Keep it genuinely short — this needs to fit on a small card, not a paragraph.>\n[[/STICKY]]\n\n[[STICKY color=pink kind=formula]]\nTitle: <...>\n<...>\n[[/STICKY]]\n\nRules:\n1. Produce however many notes the topic actually needs to be covered well — typically 3 to 8, and always in the logical reading order (foundational idea first, details/examples after) since notes are numbered automatically in the order you output them.\n2. Each note covers exactly one idea, term, step, or fact — never cram multiple unrelated points onto one note.\n3. Cycle through these colors across notes, in this order, repeating once you reach the end: yellow, pink, blue, green, orange, purple. Always write the color in lowercase exactly as shown.\n4. Set kind= to whichever of these best labels the note's role, lowercase, no others: concept (a core idea/definition), formula (a formula or calculation), example (a worked example or illustration), mistake (a common error or misconception), summary (a wrap-up/takeaway). Pick the closest fit — every note needs a kind.\n5. Keep each note's body genuinely short: 1-3 sentences or up to ~5 short bullets. If an idea needs more than that to explain, it should probably be split across two notes instead of making one note long.\n6. Titles should be short and label-like (\"Key Formula\", \"Common Mistake\", \"Why It Matters\") — not full sentences.\n7. Do not use markdown headers (#, ##) inside a note — only plain text, bold with **, and '- ' bullet lists are allowed in the body.\n8. Never break the [[STICKY color=... kind=...]] / [[/STICKY]] tag syntax, never add extra attributes, and never nest one inside another." } ] }
-  ];
+        directive: "Activate Sticky Note Mode. Instead of writing normal prose or a long structured answer, break the topic down into several short, self-contained sticky notes — the way someone would pin index cards on a board while studying, one focused idea per note, numbered in the order they should be read.\n\nOutput format is strict and must be followed exactly, with nothing before the first note and nothing after the last one (no intro sentence, no closing summary, no prose outside the notes):\n\n[[STICKY color=yellow kind=concept]]\nTitle: <a short 2-6 word title for this note>\n<the note's content: 1-3 short sentences, or a tight bullet list with '- ' bullets. Keep it genuinely short — this needs to fit on a small card, not a paragraph.>\n[[/STICKY]]\n\n[[STICKY color=pink kind=formula]]\nTitle: <...>\n<...>\n[[/STICKY]]\n\nRules:\n1. Produce however many notes the topic actually needs to be covered well — typically 3 to 8, and always in the logical reading order (foundational idea first, details/examples after) since notes are numbered automatically in the order you output them.\n2. Each note covers exactly one idea, term, step, or fact — never cram multiple unrelated points onto one note.\n3. Cycle through these colors across notes, in this order, repeating once you reach the end: yellow, pink, blue, green, orange, purple. Always write the color in lowercase exactly as shown.\n4. Set kind= to whichever of these best labels the note's role, lowercase, no others: concept (a core idea/definition), formula (a formula or calculation), example (a worked example or illustration), mistake (a common error or misconception), summary (a wrap-up/takeaway). Pick the closest fit — every note needs a kind.\n5. Keep each note's body genuinely short: 1-3 sentences or up to ~5 short bullets. If an idea needs more than that to explain, it should probably be split across two notes instead of making one note long.\n6. Titles should be short and label-like (\"Key Formula\", \"Common Mistake\", \"Why It Matters\") — not full sentences.\n7. Do not use markdown headers (#, ##) inside a note — only plain text, bold with **, and '- ' bullet lists are allowed in the body.\n8. Never break the [[STICKY color=... kind=...]] / [[/STICKY]] tag syntax, never add extra attributes, and never nest one inside another." } ] },
+    { group: '📖 Study & Practice', exclusive: true, modes: [
+      { id: 'practice-problems', name: 'Practice Problems', desc: 'Generates unsolved practice questions on the topic, so you can attempt them yourself first.',
+        directive: "Activate Practice Problems Mode. Instead of explaining the topic in prose, generate a set of practice questions on it — the person wants to test themselves, not be taught right now, so do NOT solve the problems or give away the answers in this response.\n\n1. Produce 4-8 problems, ordered from easier/foundational to harder/more applied, covering the topic's core mechanics, not just its definition.\n2. Vary problem types across the set where the topic allows it: at least one straightforward calculation/application, one conceptual or 'explain why' question, one that requires combining two ideas, and one edge-case or trickier scenario.\n3. Every problem needs enough specific, concrete data to actually be solved — real or realistic numbers, named scenarios, specific values — never a vague prompt like 'calculate the risk of a portfolio' with no inputs given.\n4. Number each problem plainly (1., 2., 3., ...). For multi-part problems, use (a)/(b)/(c) within the number.\n5. Do not include solutions, final answers, hints toward the method, or worked steps anywhere in this response — not even a boxed final number. If a problem is inherently multi-step, that's fine; just don't solve it.\n6. After the last problem, add one short line: 'Answers and full solutions: ask to solve any of these, or switch to Worked Solutions Mode.' Nothing else after that — no other closing commentary.\n7. If the conversation's topic doesn't naturally support numerical/applied problems (e.g. a purely historical or biographical topic), instead generate short-answer or applied-scenario questions that still have a clear, checkable correct answer — don't force calculations onto a topic that has none." },
+      { id: 'formula-deep-dive', name: 'Formula Deep-Dive', desc: 'Breaks down every formula in the concept: what each symbol means, where it comes from, and exactly how to apply it.',
+        directive: "Activate Formula Deep-Dive Mode. The person wants to actually understand the mathematics behind this topic well enough to apply it themselves, not just see the formula stated.\n\nFor every formula that's part of this concept, cover, in order:\n1. State the formula clearly, using standard notation, set off on its own line.\n2. Define every single symbol/variable in it individually — no symbol left unexplained, including subscripts and any implicit assumptions (e.g. what period a rate is over, what a subscript i ranges across).\n3. Explain where the formula comes from: the intuition or, where it's genuinely illuminating and not overly long, a brief derivation — not just 'this is the formula, memorize it'.\n4. Give the exact step-by-step procedure for using it: what to identify first, what to compute first, second, third, in order, as if writing instructions for someone about to use it for the first time.\n5. Work through one full numerical example applying the procedure from step 4, showing every intermediate number, not just the final answer.\n6. Name the most common mistake people make applying this specific formula (wrong sign, wrong period, mixing up two similar-looking variables, forgetting an assumption, etc.) and exactly how to avoid it.\n7. If the topic involves more than one formula, repeat this full treatment for each one, clearly separated with a heading naming the formula, and briefly note how the formulas relate to or build on each other if they do.\n8. Prioritize actually being able to compute with the formula correctly over prose explanation — err toward more worked numbers, fewer paragraphs of description." },
+      { id: 'worked-solutions', name: 'Worked Solutions', desc: 'Generates practice problems and immediately solves each one in full, explaining every step.',
+        directive: "Activate Worked Solutions Mode. Generate practice problems on the topic AND solve every one of them in full, step by step — unlike Practice Problems Mode, here the person wants to see the complete solution process, not attempt it blind first.\n\n1. Produce 3-6 problems, ordered from easier to harder, each with enough specific concrete data (real numbers, named scenario) to actually be solved.\n2. Immediately after each problem, give its full solution using this structure: (a) state what's being asked and what's given, (b) identify which formula, method, or reasoning approach applies and briefly say why that one, (c) work through every calculation step in order, showing the actual numbers at each step — never skip from the setup straight to a final answer, (d) clearly mark the final answer (e.g. with **Answer:**), (e) add one line on the most common mistake or point of confusion for this specific problem, if there is one worth flagging.\n3. Number problems and their solutions together (Problem 1 / Solution 1, Problem 2 / Solution 2, ...) so it's unambiguous which solution belongs to which problem.\n4. Increase genuine difficulty across the set — later problems should require combining multiple steps or concepts, not just bigger numbers on the same single-step problem.\n5. Show intermediate arithmetic, not just the operation being performed — write out the actual substitution and computation, not 'plug into the formula and solve'.\n6. If a problem has multiple valid solution paths, briefly solve it with the most standard/expected method rather than presenting every possible approach." } ] }
+    ];
   const MODE_DIRECTIVES = {};
   const MODE_NAMES = {};
   MODE_DEFS.forEach(g => g.modes.forEach(m => { MODE_DIRECTIVES[m.id] = m.directive; MODE_NAMES[m.id] = m.name; }));
@@ -4194,7 +4222,84 @@
     showToast('Settings saved');
   });
 
-  /* ---------------- init ---------------- */
+  /* ---------------- PWA: install prompt + service worker ---------------- */
+  // Registers the offline app-shell service worker. Safe to call unconditionally — browsers that
+  // don't support service workers (or where it's disallowed, e.g. some in-app browsers) just skip
+  // this silently via the feature check.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // Registration can fail (e.g. sw.js not deployed yet, or running over plain http:// in
+        // local dev) — the app works fine without it, this just means no offline app-shell cache.
+      });
+    });
+  }
+
+  // Detects whether the app is already running installed/standalone, across the different ways
+  // browsers signal this (Chrome/Edge use display-mode media query; iOS Safari uses
+  // navigator.standalone).
+  function isRunningInstalled(){
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+           window.navigator.standalone === true;
+  }
+
+  let deferredInstallPrompt = null;
+  function showInstallButton(){
+    if (!els.installAppBtn || isRunningInstalled()) return;
+    els.installAppBtn.style.display = 'flex';
+    els.installAppBtn.classList.add('pulse');
+  }
+  function hideInstallButton(){
+    if (!els.installAppBtn) return;
+    els.installAppBtn.style.display = 'none';
+    els.installAppBtn.classList.remove('pulse');
+  }
+
+  // Chrome/Edge fire this when the app meets installability criteria (manifest + service worker +
+  // HTTPS). Capturing the event lets us trigger the native install dialog from our own button
+  // instead of relying on the person to notice the small icon in the address bar.
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    showInstallButton();
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    hideInstallButton();
+    showToast('Nexus installed \u2014 you can now open it like any other app');
+  });
+
+  // iOS Safari never fires beforeinstallprompt (no programmatic install API exists there at all),
+  // so show the button proactively there — clicking it just surfaces instructions for the manual
+  // Share -> "Add to Home Screen" flow, which is the only way to install on iOS.
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !isRunningInstalled()) {
+    showInstallButton();
+  }
+
+  if (els.installAppBtn) {
+    els.installAppBtn.addEventListener('click', async () => {
+      els.installAppBtn.classList.remove('pulse');
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        if (outcome === 'accepted') hideInstallButton();
+        else showToast('You can install anytime from this button, or the browser\u2019s install icon');
+      } else if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !window.navigator.standalone) {
+        // iOS Safari has no programmatic install prompt — only the manual Share -> "Add to Home
+        // Screen" flow, which can't be triggered from JS, so guide the person to it instead.
+        showToast('On iPhone/iPad: tap Share, then "Add to Home Screen"');
+      } else {
+        showToast('Look for the install icon in your browser\u2019s address bar to install Nexus');
+      }
+    });
+  }
+
+  if (isRunningInstalled()) hideInstallButton();
+
+
   document.body.setAttribute('data-theme', applied.theme);
   document.body.classList.toggle('compact', applied.compact);
   renderConvoList();
