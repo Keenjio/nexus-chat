@@ -479,6 +479,12 @@
   .msg.assistant .answer-marker .am-line{flex:1;height:1px;background:var(--line-soft);}
   .chat-highlight-mark{background:rgba(255,213,79,.32);border-radius:2px;box-decoration-break:clone;-webkit-box-decoration-break:clone;}
 
+  /* ============ MERMAID DIAGRAMS — used by Concept Map mode and any ```mermaid fence ============ */
+  .mermaid-diagram{margin:12px 0;padding:14px;border-radius:12px;background:var(--bg-1,#171717);border:1px solid var(--line,#2a2a2a);overflow-x:auto;display:flex;justify-content:center;}
+  .mermaid-diagram svg{max-width:100%;height:auto;}
+  .mermaid-pending{color:var(--text-faint,#7a7a7a);font-family:'Inter',sans-serif;font-size:12.5px;padding:20px;}
+  .mermaid-error{color:#ff9d9f;font-family:'Inter',sans-serif;font-size:12px;margin-bottom:8px;}
+
   /* ============ STICKY NOTE MODE — renders assistant answers as a board of sticky-note cards ============ */
   .sticky-board{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 0 2px;}
   .sticky-note{--sn-color:#ffe066;--sn-color-dark:#e0c040;width:230px;min-height:170px;flex:0 0 auto;padding:30px 16px 14px;border-radius:3px 14px 14px 3px;background:linear-gradient(160deg,var(--sn-color) 0%,var(--sn-color-dark) 100%);color:#2a2416;font-family:'Inter',sans-serif;box-shadow:0 8px 18px rgba(0,0,0,.35),0 2px 4px rgba(0,0,0,.2);transform:rotate(var(--sn-rot,-1.4deg));transition:transform .15s ease,box-shadow .15s ease;position:relative;display:flex;flex-direction:column;}
@@ -496,6 +502,9 @@
   .sticky-note.sn-color-purple{--sn-color:#d4b3ff;--sn-color-dark:#bb8cf5;}
   .sticky-note-title{font-weight:800;font-size:14px;line-height:1.28;margin-bottom:8px;font-family:'Kalam','Segoe Print','Comic Sans MS',cursive,'Inter',sans-serif;}
   .sticky-note-body{font-size:12.5px;line-height:1.5;flex:1;overflow-wrap:break-word;}
+  .sticky-table{width:100%;border-collapse:collapse;font-size:10.5px;margin:2px 0 6px;table-layout:fixed;}
+  .sticky-table th,.sticky-table td{border:1px solid rgba(0,0,0,.18);padding:3px 4px;text-align:left;overflow-wrap:break-word;}
+  .sticky-table th{font-weight:800;background:rgba(0,0,0,.06);}
   .sticky-note-body ul{margin:2px 0 0;padding-left:16px;}
   .sticky-note-body li{margin-bottom:3px;}
   .sticky-note-body p{margin:0 0 6px;}
@@ -912,6 +921,7 @@
   <button type="button" data-action="side" title="Ask about this in the side chat, without derailing the main conversation">💬 Ask side chat</button>
   <button type="button" data-action="highlight" title="Highlight this text in the message">🖍️ Highlight</button>
   <button type="button" data-action="save" title="Save this for later as a reusable snippet">🔖 Save for later</button>
+  <button type="button" data-action="note" title="Save this to your Notes panel">📌 Save to Notes</button>
   <button type="button" data-action="copy" title="Copy to clipboard">📋 Copy</button>
 </div>
 <div class="side-scrim" id="sideScrim"></div>
@@ -1370,11 +1380,18 @@
     s = s.replace(/\$([^\$\n]+?)\$/g, (m, tex) => { stash.push({disp:false, tex}); return '\u0000LX' + (stash.length-1) + '\u0000'; });
 
     const codeStash = [];
+    const mermaidStash = [];
+    // Mermaid diagram fences get pulled out separately from regular code fences, so they can be
+    // rendered as an actual diagram (via mermaid.js, loaded lazily — see ensureMermaid) instead of
+    // as a plain <pre><code> block. Detection is based on the ```mermaid language tag, the same
+    // fence syntax models are already heavily trained on, rather than a bespoke [[TAG]] format.
+    s = s.replace(/```mermaid\n?([\s\S]*?)```/g, (m, code) => { mermaidStash.push(code.trim()); return '\u0000MM' + (mermaidStash.length-1) + '\u0000'; });
     s = s.replace(/```([a-zA-Z0-9]*)\n?([\s\S]*?)```/g, (m, lang, code) => { codeStash.push(code.replace(/\n$/, '')); return '\u0000CB' + (codeStash.length-1) + '\u0000'; });
 
     s = escapeHtml(s);
 
     s = s.replace(/\u0000CB(\d+)\u0000/g, (m, i) => '<pre><code>' + escapeHtml(codeStash[i]) + '</code></pre>');
+    s = s.replace(/\u0000MM(\d+)\u0000/g, (m, i) => '<div class="mermaid-diagram" data-mermaid-src="' + escapeAttr(mermaidStash[i]) + '"><div class="mermaid-pending">Rendering diagram\u2026</div></div>');
 
     // Models often write a literal "<br>" inside table cells as the only way to force a line
     // break within a single markdown cell (there's no other portable syntax for it). escapeHtml()
@@ -1437,6 +1454,53 @@
           throwOnError:false
         });
       } catch {}
+    }
+  }
+
+  // ---- Mermaid diagrams (used by Concept Map mode, and by any response that includes a
+  // ```mermaid fence) — loaded lazily on first actual use, same pattern as ensureTesseract for
+  // PDF OCR, so pages that never use a diagram don't pay for the library. ----
+  let mermaidLoading = null;
+  let mermaidInitDone = false;
+  function ensureMermaid(){
+    if (window.mermaid) return Promise.resolve();
+    if (mermaidLoading) return mermaidLoading;
+    mermaidLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Could not load diagram engine'));
+      document.head.appendChild(s);
+    });
+    return mermaidLoading;
+  }
+  async function renderMermaidIn(el){
+    const nodes = el.querySelectorAll('.mermaid-diagram[data-mermaid-src]');
+    if (!nodes.length) return;
+    try {
+      await ensureMermaid();
+      if (!mermaidInitDone) {
+        window.mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' });
+        mermaidInitDone = true;
+      }
+      for (const node of nodes) {
+        const src = node.getAttribute('data-mermaid-src');
+        node.removeAttribute('data-mermaid-src'); // consumed — prevents double-render if this runs again during streaming
+        const id = 'mmd-' + uid();
+        try {
+          const { svg } = await window.mermaid.render(id, src);
+          node.innerHTML = svg;
+        } catch (err) {
+          // A model-authored diagram can have invalid Mermaid syntax; fail to a plain code block
+          // instead of leaving "Rendering diagram…" stuck forever or throwing past this diagram.
+          node.innerHTML = '<div class="mermaid-error">Couldn\u2019t render this diagram \u2014 showing the raw source instead.</div><pre><code>' + escapeHtml(src) + '</code></pre>';
+        }
+      }
+    } catch (err) {
+      nodes.forEach(node => {
+        const src = node.getAttribute('data-mermaid-src') || '';
+        node.innerHTML = '<div class="mermaid-error">Diagram engine failed to load.</div><pre><code>' + escapeHtml(src) + '</code></pre>';
+      });
     }
   }
 
@@ -1805,8 +1869,22 @@
     const lines = raw.split('\n');
     let html = '';
     let inList = false;
-    lines.forEach(line => {
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
       const trimmed = line.trim();
+      // Minimal markdown-table support, as a safety net: the model is told not to use tables in
+      // sticky notes (a 230px-wide card is a poor fit for a table), but if one slips through
+      // anyway, render it as a real compact table instead of dumping raw "| a | b |" pipe text.
+      if (/^\|.*\|\s*$/.test(trimmed) && i + 1 < lines.length && /^\s*\|?[\s:|-]+\|?\s*$/.test(lines[i+1].trim())) {
+        if (inList) { html += '</ul>'; inList = false; }
+        const tableLines = [line];
+        let j = i + 1;
+        while (j < lines.length && /^\|.*\|\s*$/.test(lines[j].trim())) { tableLines.push(lines[j]); j++; }
+        html += renderStickyTable_(tableLines);
+        i = j;
+        continue;
+      }
       if (/^[-•]\s+/.test(trimmed)) {
         if (!inList) { html += '<ul>'; inList = true; }
         html += '<li>' + inlineMd_(trimmed.replace(/^[-•]\s+/, '')) + '</li>';
@@ -1814,8 +1892,24 @@
         if (inList) { html += '</ul>'; inList = false; }
         if (trimmed) html += '<p>' + inlineMd_(trimmed) + '</p>';
       }
-    });
+      i++;
+    }
     if (inList) html += '</ul>';
+    return html;
+  }
+  function renderStickyTable_(tableLines){
+    const cellsOf = row => row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    const headerCells = cellsOf(tableLines[0]);
+    const bodyRows = tableLines.slice(2).map(cellsOf); // tableLines[1] is the "---|---" separator
+    let html = '<table class="sticky-table"><thead><tr>';
+    headerCells.forEach(c => html += '<th>' + inlineMd_(c) + '</th>');
+    html += '</tr></thead><tbody>';
+    bodyRows.forEach(row => {
+      html += '<tr>';
+      row.forEach(c => html += '<td>' + inlineMd_(c) + '</td>');
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
     return html;
   }
   function inlineMd_(s){
@@ -1917,6 +2011,7 @@
       } else {
         bubble.innerHTML = renderMarkdown(text);
         renderKatexIn(bubble);
+        renderMermaidIn(bubble);
       }
     }
     bwrap.appendChild(bubble);
@@ -1962,6 +2057,7 @@
       if (i >= chunks.length) {
         bubbleEl.innerHTML = renderMarkdown(fullText);
         renderKatexIn(bubbleEl);
+        renderMermaidIn(bubbleEl);
         if (onDone) onDone();
         return;
       }
@@ -2716,6 +2812,10 @@
       draft.prompts = applied.prompts.slice();
       persistAll();
       showToast('Saved for later \u2014 find it in Settings \u2192 Saved snippets');
+    } else if (action === 'note') {
+      const autoTitle = text.length > 44 ? text.slice(0, 44).trim() + '\u2026' : text.split('\n')[0];
+      addNote(text, autoTitle, '', 'Saved from chat');
+      showToast('Saved to Notes');
     } else if (action === 'highlight') {
       const convo = getActive();
       if (convo && mainSelState.msgId) {
@@ -2986,7 +3086,7 @@
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     if (role === 'user') bubble.textContent = text;
-    else { bubble.innerHTML = text ? renderMarkdown(text) : '<div class="typing"><span></span><span></span><span></span></div>'; renderKatexIn(bubble); }
+    else { bubble.innerHTML = text ? renderMarkdown(text) : '<div class="typing"><span></span><span></span><span></span></div>'; renderKatexIn(bubble); renderMermaidIn(bubble); }
     wrap.appendChild(bubble);
     return wrap;
   }
@@ -3057,7 +3157,17 @@
       const res = await fetch('/api/chat', { method: 'POST', headers, body: JSON.stringify({ model, messages: payloadMessages, stream: false }) });
       const raw = await res.text();
       let data; try { data = JSON.parse(raw); } catch { data = null; }
-      if (!res.ok) throw new Error((data && data.error && data.error.message) || raw || ('Request failed with status ' + res.status));
+      if (!res.ok) {
+        const providerMsg = (data && data.error && data.error.message) || raw || ('Request failed with status ' + res.status);
+        // NVIDIA NIM sometimes returns this exact generic phrase with no further detail when the
+        // request itself was the problem (most often: too large/too many tokens, or malformed
+        // content) rather than a real outage — surface a more actionable message in that specific
+        // case instead of just repeating a phrase that gives the person nothing to act on.
+        if (/^provider returned error$/i.test(providerMsg.trim())) {
+          throw new Error('The model rejected this request without a specific reason \u2014 this usually means it was too long or too complex for one message (e.g. several full multi-part problems at once). Try asking about fewer problems at a time, or tap Retry once in case it was transient.');
+        }
+        throw new Error(providerMsg);
+      }
 
       const reply = data?.choices?.[0]?.message?.content;
       if (!reply || !reply.trim()) {
@@ -3268,8 +3378,13 @@
 
       if (!res.ok) {
         const msg = (data && data.error && data.error.message) || raw || ('Request failed with status ' + res.status);
+        // See runSideRequest's identical handling for why this specific phrase gets a clearer,
+        // actionable message instead of being shown verbatim.
+        const displayMsg = /^provider returned error$/i.test(msg.trim())
+          ? 'The model rejected this request without a specific reason \u2014 this usually means it was too long or too complex for one message (e.g. several full multi-part problems at once). Try asking for fewer at a time, or use Regenerate in case it was transient.'
+          : msg;
         pending.bubble.className = 'bubble error-bubble';
-        pending.bubble.textContent = msg;
+        pending.bubble.textContent = displayMsg;
         showToast('Request failed', true);
         return;
       }
@@ -3398,14 +3513,18 @@
         directive: "Activate Show Your Work Mode. Whenever a response includes a number, calculation, or claim that was derived rather than trivially known, show the actual steps behind it.\n\n1. For calculations, show the arithmetic or formula applied, not just the result.\n2. For derived conclusions, show the actual reasoning chain that produced them.\n3. For factual claims recalled rather than derived, say plainly that it's recalled from training knowledge, and flag it explicitly if it's the kind of fact that could have changed or be misremembered.\n4. If a claim can't be traced to a clear derivation or firm basis, say so directly instead of presenting it as settled." } ] },
     { group: '🗒️ Format & Layout', modes: [
       { id: 'sticky', name: 'Sticky Note Mode', desc: 'Breaks the topic into a board of short, scannable sticky notes instead of prose.',
-        directive: "Activate Sticky Note Mode. Instead of writing normal prose or a long structured answer, break the topic down into several short, self-contained sticky notes — the way someone would pin index cards on a board while studying, one focused idea per note, numbered in the order they should be read.\n\nOutput format is strict and must be followed exactly, with nothing before the first note and nothing after the last one (no intro sentence, no closing summary, no prose outside the notes):\n\n[[STICKY color=yellow kind=concept]]\nTitle: <a short 2-6 word title for this note>\n<the note's content: 1-3 short sentences, or a tight bullet list with '- ' bullets. Keep it genuinely short — this needs to fit on a small card, not a paragraph.>\n[[/STICKY]]\n\n[[STICKY color=pink kind=formula]]\nTitle: <...>\n<...>\n[[/STICKY]]\n\nRules:\n1. Produce however many notes the topic actually needs to be covered well — typically 3 to 8, and always in the logical reading order (foundational idea first, details/examples after) since notes are numbered automatically in the order you output them.\n2. Each note covers exactly one idea, term, step, or fact — never cram multiple unrelated points onto one note.\n3. Cycle through these colors across notes, in this order, repeating once you reach the end: yellow, pink, blue, green, orange, purple. Always write the color in lowercase exactly as shown.\n4. Set kind= to whichever of these best labels the note's role, lowercase, no others: concept (a core idea/definition), formula (a formula or calculation), example (a worked example or illustration), mistake (a common error or misconception), summary (a wrap-up/takeaway). Pick the closest fit — every note needs a kind.\n5. Keep each note's body genuinely short: 1-3 sentences or up to ~5 short bullets. If an idea needs more than that to explain, it should probably be split across two notes instead of making one note long.\n6. Titles should be short and label-like (\"Key Formula\", \"Common Mistake\", \"Why It Matters\") — not full sentences.\n7. Do not use markdown headers (#, ##) inside a note — only plain text, bold with **, and '- ' bullet lists are allowed in the body.\n8. Never break the [[STICKY color=... kind=...]] / [[/STICKY]] tag syntax, never add extra attributes, and never nest one inside another." } ] },
+        directive: "Activate Sticky Note Mode. Instead of writing normal prose or a long structured answer, break the topic down into several short, self-contained sticky notes — the way someone would pin index cards on a board while studying, one focused idea per note, numbered in the order they should be read.\n\nOutput format is strict and must be followed exactly, with nothing before the first note and nothing after the last one (no intro sentence, no closing summary, no prose outside the notes):\n\n[[STICKY color=yellow kind=concept]]\nTitle: <a short 2-6 word title for this note>\n<the note's content: 1-3 short sentences, or a tight bullet list with '- ' bullets. Keep it genuinely short — this needs to fit on a small card, not a paragraph.>\n[[/STICKY]]\n\n[[STICKY color=pink kind=formula]]\nTitle: <...>\n<...>\n[[/STICKY]]\n\nRules:\n1. Produce however many notes the topic actually needs to be covered well — typically 3 to 8, and always in the logical reading order (foundational idea first, details/examples after) since notes are numbered automatically in the order you output them.\n2. Each note covers exactly one idea, term, step, or fact — never cram multiple unrelated points onto one note.\n3. Cycle through these colors across notes, in this order, repeating once you reach the end: yellow, pink, blue, green, orange, purple. Always write the color in lowercase exactly as shown.\n4. Set kind= to whichever of these best labels the note's role, lowercase, no others: concept (a core idea/definition), formula (a formula or calculation), example (a worked example or illustration), mistake (a common error or misconception), summary (a wrap-up/takeaway). Pick the closest fit — every note needs a kind.\n5. Keep each note's body genuinely short: 1-3 sentences or up to ~5 short bullets. If an idea needs more than that to explain, it should probably be split across two notes instead of making one note long.\n6. NEVER use a markdown table (| a | b |) inside a note — a table doesn't fit a small card and renders badly. For a comparison between two or three things, use short paired bullets instead, one per point (e.g. '- Perfect Competition: P = MC' then '- Monopolistic Competition: P > MC'), splitting the comparison across two or three notes (one per thing being compared) if it doesn't fit cleanly as bullets on one card.\n7. Titles should be short and label-like (\"Key Formula\", \"Common Mistake\", \"Why It Matters\") — not full sentences.\n8. Do not use markdown headers (#, ##) inside a note — only plain text, bold with **, and '- ' bullet lists are allowed in the body.\n9. Never break the [[STICKY color=... kind=...]] / [[/STICKY]] tag syntax, never add extra attributes, and never nest one inside another." } ] },
     { group: '📖 Study & Practice', exclusive: true, modes: [
       { id: 'practice-problems', name: 'Practice Problems', desc: 'Generates unsolved practice questions on the topic, so you can attempt them yourself first.',
-        directive: "Activate Practice Problems Mode. Instead of explaining the topic in prose, generate a set of practice questions on it — the person wants to test themselves, not be taught right now, so do NOT solve the problems or give away the answers in this response.\n\n1. Produce 4-8 problems, ordered from easier/foundational to harder/more applied, covering the topic's core mechanics, not just its definition.\n2. Vary problem types across the set where the topic allows it: at least one straightforward calculation/application, one conceptual or 'explain why' question, one that requires combining two ideas, and one edge-case or trickier scenario.\n3. Every problem needs enough specific, concrete data to actually be solved — real or realistic numbers, named scenarios, specific values — never a vague prompt like 'calculate the risk of a portfolio' with no inputs given.\n4. Number each problem plainly (1., 2., 3., ...). For multi-part problems, use (a)/(b)/(c) within the number.\n5. Do not include solutions, final answers, hints toward the method, or worked steps anywhere in this response — not even a boxed final number. If a problem is inherently multi-step, that's fine; just don't solve it.\n6. After the last problem, add one short line: 'Answers and full solutions: ask to solve any of these, or switch to Worked Solutions Mode.' Nothing else after that — no other closing commentary.\n7. If the conversation's topic doesn't naturally support numerical/applied problems (e.g. a purely historical or biographical topic), instead generate short-answer or applied-scenario questions that still have a clear, checkable correct answer — don't force calculations onto a topic that has none." },
+        directive: "Activate Practice Problems Mode. Instead of explaining the topic in prose, generate a set of practice questions on it \u2014 the person wants to test themselves, not be taught right now, so do NOT solve the problems or give away the answers in this response.\n\n1. Produce 4-8 problems by default \u2014 fewer, more, or a specific difficulty if the person's message asked for that (e.g. '3 hard ones', '10 easy questions'); their explicit request always overrides the default count/difficulty.\n2. Unless a specific difficulty was requested, order problems from easier/foundational to harder/more applied, covering the topic's core mechanics, not just its definition.\n3. Vary problem types across the set where the topic allows it: at least one straightforward calculation/application, one conceptual or 'explain why' question, one that requires combining two ideas, and one edge-case or trickier scenario.\n4. Every problem needs enough specific, concrete data to actually be solved \u2014 real or realistic numbers, named scenarios, specific values \u2014 never a vague prompt like 'calculate the risk of a portfolio' with no inputs given.\n5. Keep normal spacing between every word and number at all times, even when a sentence has math mixed into it (e.g. 'Market price = 30, AFC = 12 at Q = 20' \u2014 not 'MarketPrice=30,AFC=12atQ=20'). Never let variables, numbers, and words run together with no spaces \u2014 this makes a problem unreadable. Put any longer formula on its own line rather than packing it into a sentence.\n6. Number each problem plainly (1., 2., 3., ...). For multi-part problems, use (a)/(b)/(c) within the number.\n7. Do not include solutions, final answers, hints toward the method, or worked steps anywhere in this response \u2014 not even a boxed final number. If a problem is inherently multi-step, that's fine; just don't solve it.\n8. Check the conversation so far and avoid repeating a problem (same numbers, same scenario) already given earlier in this chat \u2014 vary the numbers or angle even if the underlying skill being tested is the same.\n9. After the last problem, add one short line: 'Answers and full solutions: paste your attempt and ask me to check it, ask to solve any of these directly, or switch to Worked Solutions Mode.' Nothing else after that \u2014 no other closing commentary.\n10. If the conversation's topic doesn't naturally support numerical/applied problems (e.g. a purely historical or biographical topic), instead generate short-answer or applied-scenario questions that still have a clear, checkable correct answer \u2014 don't force calculations onto a topic that has none." },
       { id: 'formula-deep-dive', name: 'Formula Deep-Dive', desc: 'Breaks down every formula in the concept: what each symbol means, where it comes from, and exactly how to apply it.',
-        directive: "Activate Formula Deep-Dive Mode. The person wants to actually understand the mathematics behind this topic well enough to apply it themselves, not just see the formula stated.\n\nFor every formula that's part of this concept, cover, in order:\n1. State the formula clearly, using standard notation, set off on its own line.\n2. Define every single symbol/variable in it individually — no symbol left unexplained, including subscripts and any implicit assumptions (e.g. what period a rate is over, what a subscript i ranges across).\n3. Explain where the formula comes from: the intuition or, where it's genuinely illuminating and not overly long, a brief derivation — not just 'this is the formula, memorize it'.\n4. Give the exact step-by-step procedure for using it: what to identify first, what to compute first, second, third, in order, as if writing instructions for someone about to use it for the first time.\n5. Work through one full numerical example applying the procedure from step 4, showing every intermediate number, not just the final answer.\n6. Name the most common mistake people make applying this specific formula (wrong sign, wrong period, mixing up two similar-looking variables, forgetting an assumption, etc.) and exactly how to avoid it.\n7. If the topic involves more than one formula, repeat this full treatment for each one, clearly separated with a heading naming the formula, and briefly note how the formulas relate to or build on each other if they do.\n8. Prioritize actually being able to compute with the formula correctly over prose explanation — err toward more worked numbers, fewer paragraphs of description." },
+        directive: "Activate Formula Deep-Dive Mode. The person wants to actually understand the mathematics behind this topic well enough to apply it themselves, not just see the formula stated.\n\nFirst check: does this topic actually center on one or more formulas? If it's a genuinely conceptual/qualitative topic with no real formula (e.g. a governance principle, a definition-only term), say so plainly in one line and give the clearest available quantitative angle if one exists nearby in the topic (a related ratio, threshold, or rule of thumb) \u2014 don't force a fake or overly generic formula onto a topic that doesn't have one.\n\nWhen there is a real formula, for every formula that's part of this concept, cover, in order:\n1. State the formula clearly, using standard notation, set off on its own line.\n2. Define every single symbol/variable in it individually \u2014 no symbol left unexplained, including subscripts and any implicit assumptions (e.g. what period a rate is over, what a subscript i ranges across, what units are expected).\n3. Explain where the formula comes from: the intuition or, where it's genuinely illuminating and not overly long, a brief derivation \u2014 not just 'this is the formula, memorize it'.\n4. Give the exact step-by-step procedure for using it: what to identify first, what to compute first, second, third, in order, as if writing instructions for someone about to use it for the first time.\n5. Work through one full numerical example applying the procedure from step 4, showing every intermediate number, not just the final answer.\n6. Name the most common mistake people make applying this specific formula (wrong sign, wrong period, mixing up two similar-looking variables, forgetting an assumption, using the wrong variant of a similarly-named formula) and exactly how to avoid it.\n7. If a related or lookalike formula is easy to confuse with this one, name it explicitly and state the one concrete thing that distinguishes when to use each.\n8. If the topic involves more than one formula, repeat this full treatment for each one, clearly separated with a heading naming the formula, and briefly note how the formulas relate to or build on each other if they do.\n9. Prioritize actually being able to compute with the formula correctly over prose explanation \u2014 err toward more worked numbers, fewer paragraphs of description." },
       { id: 'worked-solutions', name: 'Worked Solutions', desc: 'Generates practice problems and immediately solves each one in full, explaining every step.',
-        directive: "Activate Worked Solutions Mode. Generate practice problems on the topic AND solve every one of them in full, step by step — unlike Practice Problems Mode, here the person wants to see the complete solution process, not attempt it blind first.\n\n1. Produce 3-6 problems, ordered from easier to harder, each with enough specific concrete data (real numbers, named scenario) to actually be solved.\n2. Immediately after each problem, give its full solution using this structure: (a) state what's being asked and what's given, (b) identify which formula, method, or reasoning approach applies and briefly say why that one, (c) work through every calculation step in order, showing the actual numbers at each step — never skip from the setup straight to a final answer, (d) clearly mark the final answer (e.g. with **Answer:**), (e) add one line on the most common mistake or point of confusion for this specific problem, if there is one worth flagging.\n3. Number problems and their solutions together (Problem 1 / Solution 1, Problem 2 / Solution 2, ...) so it's unambiguous which solution belongs to which problem.\n4. Increase genuine difficulty across the set — later problems should require combining multiple steps or concepts, not just bigger numbers on the same single-step problem.\n5. Show intermediate arithmetic, not just the operation being performed — write out the actual substitution and computation, not 'plug into the formula and solve'.\n6. If a problem has multiple valid solution paths, briefly solve it with the most standard/expected method rather than presenting every possible approach." } ] }
+        directive: "Activate Worked Solutions Mode. Generate practice problems on the topic AND solve every one of them in full, step by step \u2014 unlike Practice Problems Mode, here the person wants to see the complete solution process, not attempt it blind first.\n\n1. Produce 3-6 problems by default \u2014 fewer, more, or a specific difficulty if the person's message asked for that; their explicit request always overrides the default.\n2. Vary problem types across the set the same way Practice Problems Mode does: at least one straightforward application, one conceptual question, one that combines two ideas, and increase genuine difficulty across the set \u2014 later problems should require combining multiple steps or concepts, not just bigger numbers on the same single-step problem.\n3. Keep normal spacing between every word and number at all times, even when a sentence has math mixed into it (e.g. 'Market price = 30, AFC = 12 at Q = 20' \u2014 not 'MarketPrice=30,AFC=12atQ=20'). Never let variables, numbers, and words run together with no spaces. Put any longer formula or multi-line calculation on its own line rather than packing it into a sentence.\n4. Immediately after each problem, give its full solution using this structure: (a) state what's being asked and what's given, (b) identify which formula, method, or reasoning approach applies and briefly say why that one (and why not a similar-looking alternative, if one is easy to confuse with it), (c) work through every calculation step in order, showing the actual numbers at each step \u2014 never skip from the setup straight to a final answer, (d) clearly mark the final answer (e.g. with **Answer:**), (e) add one line on the most common mistake or point of confusion for this specific problem, if there is one worth flagging.\n5. Number problems and their solutions together (Problem 1 / Solution 1, Problem 2 / Solution 2, ...) so it's unambiguous which solution belongs to which problem.\n6. Check the conversation so far and avoid repeating a problem already given earlier in this chat.\n7. Show intermediate arithmetic, not just the operation being performed \u2014 write out the actual substitution and computation, not 'plug into the formula and solve'.\n8. If a problem has multiple valid solution paths, briefly solve it with the most standard/expected method, then add one line naming the alternative approach without fully working it \u2014 don't fully solve every problem multiple ways." },
+      { id: 'answer-check', name: 'Answer Check', desc: 'Grades your own attempted solution against the correct one, step by step, without just handing you the answer up front.',
+        directive: "Activate Answer Check Mode. The person has attempted a problem themselves and is submitting their work (or a final answer) to be checked \u2014 your job is to evaluate their attempt, not to just restate the correct solution as if from scratch.\n\n1. First restate, in one line, what problem and what final answer you understood them to have given \u2014 so a misread is caught immediately rather than grading the wrong thing.\n2. If they showed their working/steps, go through it step by step and mark each step as correct or where it first goes wrong \u2014 be specific about the exact step and exact error (a sign error, a wrong formula, a misapplied assumption, an arithmetic slip), not just 'this step is wrong'.\n3. If they only gave a final answer with no shown work, state whether it's correct, and if not, work the problem yourself from scratch so they can compare against their own steps \u2014 but lead with the verdict, don't bury it.\n4. If their final answer is correct but their method or reasoning was flawed (right answer, wrong or coincidental path), say so explicitly \u2014 a lucky correct answer is not the same as understanding, and this distinction matters more here than anywhere else in this app.\n5. If their answer is correct and their method was sound, confirm it plainly and briefly \u2014 don't re-explain the whole solution at length just because it happened to be right.\n6. End with one specific, actionable line: either what to fix and how, or (if fully correct) a brief note on what made the approach solid \u2014 not a generic 'good job' or 'try again'.\n7. If what they submitted isn't actually gradable (no problem context, ambiguous what's being checked), ask for the specific problem being solved rather than guessing." },
+      { id: 'concept-map', name: 'Concept Map', desc: 'Breaks the topic down as an actual rendered diagram — a flowchart or map of how the pieces connect — alongside a real in-depth explanation.',
+        directive: "Activate Concept Map Mode. The person wants the topic broken down visually as a real diagram showing how its pieces connect, in addition to a genuinely in-depth written explanation \u2014 not a diagram instead of depth, both together.\n\nOutput structure, in order:\n1. A rendered diagram, using a single fenced Mermaid code block: three backticks, then the word mermaid, then the diagram code, then three backticks to close. Use exactly this fence syntax and nothing else \u2014 no other diagram format, no ASCII art, no image description in words.\n2. Choose whichever Mermaid diagram type actually fits how this topic's pieces relate, don't default to the same shape every time:\n   - flowchart (`flowchart TD` or `flowchart LR`) for a process, decision tree, or cause-and-effect chain \u2014 use `-->` for a plain link and `-->|label|` for a labeled link, and `{Decision?}` diamond nodes for branching logic (e.g. shutdown-or-produce, accept-or-reject).\n   - `graph TD` for a hierarchy or breakdown of a concept into its components/sub-components.\n   - `sequenceDiagram` only if the topic is genuinely about an ordered interaction between distinct parties over time (e.g. a swap's cash flows between two counterparties, a clearing/settlement process) \u2014 not for a plain list of steps a single actor takes.\n   - `quadrantChart` or a simple `graph` laid out as a 2x2 if the topic is naturally a two-axis comparison (e.g. classifying strategies along two dimensions).\n3. Keep node labels short (a few words, not full sentences) \u2014 the explanation in step 4 carries the depth, the diagram carries the structure. Use double quotes around any node label containing special characters, parentheses, or symbols like %, =, or < / > (e.g. `A[\"P = MC\"]`), since unquoted special characters are a common cause of a diagram failing to render.\n4. Immediately after the diagram, write a genuinely in-depth explanation of the topic in normal prose \u2014 walk through what the diagram shows, why each connection/branch exists, the reasoning or mechanism behind each step, and any formula, threshold, or condition attached to a node, going deep enough that someone could reconstruct the diagram's logic from the prose alone without looking at it again.\n5. Explicitly reference specific nodes/branches from the diagram by their label while explaining them (e.g. \\\"at the 'P < min AVC' branch, the firm...\\\"), so the diagram and the prose clearly map onto each other rather than existing as two disconnected halves of the response.\n6. If the topic genuinely has no meaningful structure, process, or relationships to diagram (e.g. a single flat definition with no sub-parts), say so in one line and give the in-depth prose explanation alone rather than forcing an artificial or trivial diagram." } ] },
     ];
   const MODE_DIRECTIVES = {};
   const MODE_NAMES = {};
