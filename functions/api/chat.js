@@ -20,14 +20,25 @@ const PROVIDERS = {
       'HTTP-Referer': new URL(request.url).origin,
       'X-Title': 'Nexus'
     })
+  },
+  groq: {
+    url: 'https://api.groq.com/openai/v1/chat/completions',
+    clientKeyHeader: 'X-Groq-Key',
+    envKeyName: 'GROQ_API_KEY',
+    buildHeaders: (apiKey) => ({
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    })
   }
 };
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, X-NVIDIA-Key, X-OpenRouter-Key, X-Provider',
+  'Access-Control-Allow-Headers': 'Content-Type, X-NVIDIA-Key, X-OpenRouter-Key, X-Groq-Key, X-Provider',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
+
+const PROVIDER_LABELS = { nvidia: 'NVIDIA NIM', openrouter: 'OpenRouter', groq: 'Groq' };
 
 function json(body, status) {
   return new Response(JSON.stringify(body), {
@@ -50,7 +61,7 @@ export async function onRequestPost(context) {
   const providerKey = (request.headers.get('X-Provider') || 'nvidia').trim().toLowerCase();
   const provider = PROVIDERS[providerKey];
   if (!provider) {
-    return json({ error: { message: `Unknown provider "${providerKey}". Expected "nvidia" or "openrouter".` } }, 400);
+    return json({ error: { message: `Unknown provider "${providerKey}". Expected "nvidia", "openrouter" or "groq".` } }, 400);
   }
 
   // The client sends its own key in a provider-specific header rather than a
@@ -61,7 +72,7 @@ export async function onRequestPost(context) {
   // provider), fall back to a key configured server-side via environment
   // variable -- set this in your hosting platform's dashboard (e.g.
   // Cloudflare Pages -> Settings -> Environment Variables ->
-  // NVIDIA_API_KEY / OPENROUTER_API_KEY), NOT in this file. This keeps the
+  // NVIDIA_API_KEY / OPENROUTER_API_KEY / GROQ_API_KEY), NOT in this file. This keeps the
   // key out of the deployed HTML/JS entirely, so visitors viewing page
   // source or dev tools never see it -- only requests that pass through this
   // server-side function use it.
@@ -87,7 +98,7 @@ export async function onRequestPost(context) {
       body
     });
   } catch {
-    return json({ error: { message: `Unable to reach ${providerKey === 'nvidia' ? 'NVIDIA NIM' : 'OpenRouter'}` } }, 502);
+    return json({ error: { message: `Unable to reach ${PROVIDER_LABELS[providerKey] || providerKey}` } }, 502);
   }
 
   return new Response(upstream.body, {
