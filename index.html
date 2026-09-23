@@ -7,8 +7,8 @@
 
 <!-- PWA: installable as a standalone app on Chrome (desktop + Android) and other browsers -->
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#030304">
-<meta name="background-color" content="#030304">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="background-color" content="#0d0d0d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -26,38 +26,36 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 <style>
   :root{
-    /* Bloomberg-terminal skin (Bullion-Board DESIGN.md): pure-black canvas,
-       amber functions, security-yellow second accent, mono everywhere.
-       Independent homage — no Bloomberg trademarks, logo, or wordmark. */
-    --bg-0:#030304;              /* app background */
-    --bg-sidebar:#000000;        /* sidebar */
-    --bg-1:#0c0c0e;              /* raised surfaces / hover */
-    --bg-2:#121214;              /* inputs, cards */
-    --bg-3:#26262b;              /* borders on surfaces */
-    --line:#26262b;
-    --line-soft:#1c1c20;
-    --text-hi:#f5f5f4;
-    --text-mid:#a1a1aa;
-    --text-lo:#a1a1aa;
-    --text-faint:#5b5b62;
+    /* ChatGPT-style near-black palette */
+    --bg-0:#0d0d0d;           /* app background */
+    --bg-sidebar:#000000;      /* sidebar */
+    --bg-1:#171717;            /* raised surfaces / hover */
+    --bg-2:#1f1f1f;            /* inputs, cards */
+    --bg-3:#2a2a2a;            /* borders on surfaces */
+    --line:#2a2a2a;
+    --line-soft:#212121;
+    --text-hi:#ececec;
+    --text-mid:#b4b4b4;
+    --text-lo:#8e8ea0;
+    --text-faint:#676767;
 
-    --nvidia:#ffa028;            /* primary accent = terminal amber */
-    --nvidia-dim:#b26a00;
-    --nvidia-glow:rgba(255,160,40,.14);
-    --openrouter:#ffb000;        /* secondary accent = security yellow */
-    --openrouter-dim:#b27a00;
-    --openrouter-glow:rgba(255,176,0,.14);
-    --groq:#ff5ca8;              /* third accent = groq pink */
+    --nvidia:#10a37f;          /* ChatGPT green, repurposed as "nvidia" accent */
+    --nvidia-dim:#0d8b6c;
+    --nvidia-glow:rgba(16,163,127,.14);
+    --openrouter:#ab68ff;      /* purple accent for second provider */
+    --openrouter-dim:#8e4fe0;
+    --openrouter-glow:rgba(171,104,255,.14);
+    --groq:#ff5ca8;            /* third accent = groq pink */
     --groq-dim:#c23a72;
     --groq-glow:rgba(255,92,168,.14);
-    --danger:#ff453a;
+    --danger:#f2555a;
     --warn:#e8b04b;
-    --paper:#030304;
+    --paper:#0d0d0d;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
-  body{margin:0;background:var(--paper);color:var(--text-hi);font-family:'IBM Plex Mono',ui-monospace,'Cascadia Mono',Consolas,monospace;-webkit-font-smoothing:antialiased;font-size:14px;font-variant-numeric:tabular-nums;}
-  ::selection{background:rgba(255,160,40,.28);}
+  body{margin:0;background:var(--paper);color:var(--text-hi);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased;font-size:15px;}
+  ::selection{background:rgba(16,163,127,.28);}
   ::-webkit-scrollbar{width:8px;height:8px;}
   ::-webkit-scrollbar-track{background:transparent;}
   ::-webkit-scrollbar-thumb{background:var(--bg-3);border-radius:8px;}
@@ -79,7 +77,7 @@
   .menu-dropdown-wrap{position:relative;flex:none;}
   .menu-dropdown{
     display:none;position:fixed;min-width:190px;
-    background:var(--bg-1,#0c0c0e);border:1px solid var(--line);border-radius:12px;
+    background:var(--bg-1,#171717);border:1px solid var(--line);border-radius:12px;
     box-shadow:0 12px 28px rgba(0,0,0,.5);padding:6px;z-index:99999;flex-direction:column;gap:1px;
   }
   .menu-dropdown.show{display:flex;}
@@ -101,9 +99,9 @@
 
   /* Compact icon actions that remain in the topbar (panel toggles, not navigation). */
   .topbar-icons{display:flex;align-items:center;gap:2px;margin-left:4px;}
-  #installAppBtn{color:var(--nvidia,#ffa028);}
-  #installAppBtn:hover{background:var(--nvidia-glow,rgba(255,160,40,.14));color:var(--nvidia,#ffa028);}
-  @keyframes installPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,160,40,.35);}50%{box-shadow:0 0 0 4px rgba(255,160,40,0);}}
+  #installAppBtn{color:var(--nvidia,#10a37f);}
+  #installAppBtn:hover{background:var(--nvidia-glow,rgba(16,163,127,.14));color:var(--nvidia,#10a37f);}
+  @keyframes installPulse{0%,100%{box-shadow:0 0 0 0 rgba(16,163,127,.35);}50%{box-shadow:0 0 0 4px rgba(16,163,127,0);}}
   #installAppBtn.pulse{animation:installPulse 2s ease-in-out 3;border-radius:8px;}
   .topbar-icons .rail-icon-btn{width:30px;height:30px;}
 
@@ -112,8 +110,8 @@
   .topbar{display:flex;align-items:center;gap:13px;padding:13px 20px;background:rgba(13,13,13,.9);backdrop-filter:blur(8px);flex-wrap:wrap;row-gap:8px;}
   .route-chip{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:5px 12px 5px 9px;border-radius:100px;border:1px solid;display:flex;align-items:center;gap:6px;color:var(--text-hi);}
   .route-chip .rdot{width:6px;height:6px;border-radius:50%;background:currentColor;}
-  .route-chip.nvidia{color:var(--nvidia);border-color:rgba(255,160,40,.35);background:var(--nvidia-glow);}
-  .route-chip.openrouter{color:var(--openrouter);border-color:rgba(255,176,0,.35);background:var(--openrouter-glow);}
+  .route-chip.nvidia{color:var(--nvidia);border-color:rgba(16,163,127,.35);background:var(--nvidia-glow);}
+  .route-chip.openrouter{color:var(--openrouter);border-color:rgba(171,104,255,.35);background:var(--openrouter-glow);}
   .route-chip.groq{color:var(--groq);border-color:rgba(255,92,168,.35);background:var(--groq-glow);}
   .model-dropdown{display:flex;align-items:center;gap:5px;background:none;border:none;color:var(--text-hi);font-family:'Inter',sans-serif;font-size:16px;font-weight:600;cursor:pointer;padding:6px 8px;border-radius:8px;transition:background .12s ease;}
   .model-dropdown:hover{background:var(--bg-1);}
@@ -133,10 +131,10 @@
   .modes-toggle{display:flex;align-items:center;gap:7px;background:var(--bg-1);border:1px solid var(--line);color:var(--text-mid);font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;padding:6px 13px 6px 11px;border-radius:20px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;margin-right:8px;max-width:260px;}
   .modes-toggle #modesLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .modes-toggle .mdot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);flex:none;transition:background .15s,box-shadow .15s;}
-  .modes-toggle.on{color:var(--openrouter);border-color:rgba(255,176,0,.4);background:var(--openrouter-glow);}
+  .modes-toggle.on{color:var(--openrouter);border-color:rgba(171,104,255,.4);background:var(--openrouter-glow);}
   .modes-toggle.on .mdot{background:var(--openrouter);box-shadow:0 0 7px var(--openrouter);}
   .modes-toggle:hover{border-color:var(--text-lo);}
-  .modes-toggle .mcount{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.03em;opacity:.85;background:rgba(255,176,0,.22);color:var(--openrouter);border-radius:100px;padding:1px 6px;margin-left:1px;}
+  .modes-toggle .mcount{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.03em;opacity:.85;background:rgba(171,104,255,.22);color:var(--openrouter);border-radius:100px;padding:1px 6px;margin-left:1px;}
 
   /* ============ MODES MODAL ============ */
   .modes-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
@@ -194,7 +192,7 @@
   .add-book-btn:disabled{opacity:.55;cursor:default;}
   .add-book-status{font-size:11.5px;color:var(--text-faint);padding:6px 8px 0;min-height:14px;}
   .add-book-status.error{color:#ff9d9f;}
-  .add-book-status.success{color:var(--nvidia,#ffa028);}
+  .add-book-status.success{color:var(--nvidia,#10a37f);}
   .topics-body{overflow-y:auto;padding:10px 14px 10px;flex:1;}
   .topics-hint{font-size:11px;color:var(--text-faint);padding:2px 8px 10px;}
 
@@ -263,8 +261,8 @@
   .notes-add-row{display:flex;align-items:flex-end;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line-soft);flex:none;}
   .notes-add-row textarea{flex:1;resize:none;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;color:var(--text-hi);font-family:'Inter',sans-serif;font-size:12.5px;padding:8px 10px;max-height:90px;line-height:1.4;}
   .notes-add-row textarea:focus{outline:none;border-color:#4a4a4a;}
-  .notes-add-btn{flex:none;width:30px;height:30px;border-radius:8px;border:none;background:var(--nvidia,#ffa028);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;}
-  .notes-add-btn:hover{background:var(--nvidia-dim,#b26a00);}
+  .notes-add-btn{flex:none;width:30px;height:30px;border-radius:8px;border:none;background:var(--nvidia,#10a37f);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;}
+  .notes-add-btn:hover{background:var(--nvidia-dim,#0d8b6c);}
   .notes-list{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
   .notes-empty{color:var(--text-faint);font-family:'Inter',sans-serif;font-size:12px;text-align:center;padding:30px 10px;line-height:1.6;}
   .note-card{--nc-color:#ffe066;--nc-color-dark:#e0c040;position:relative;padding:12px 12px 10px;border-radius:2px 10px 10px 2px;background:linear-gradient(160deg,var(--nc-color) 0%,var(--nc-color-dark) 100%);color:#2a2416;box-shadow:0 4px 10px rgba(0,0,0,.3);font-family:'Inter',sans-serif;font-size:12.5px;line-height:1.48;}
@@ -329,7 +327,7 @@
   .topic-gen-error-banner{display:flex;flex-direction:column;gap:8px;background:rgba(255,157,159,.08);border:1px solid rgba(255,157,159,.3);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
   .topic-gen-error-msg{font-size:12.5px;line-height:1.5;color:var(--text-mid);}
   .topic-gen-error-actions{display:flex;gap:8px;}
-  .topic-gen-error-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:6px 13px;border-radius:8px;cursor:pointer;border:1px solid var(--nvidia,#ffa028);background:var(--nvidia,#ffa028);color:#0d0d0d;}
+  .topic-gen-error-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:6px 13px;border-radius:8px;cursor:pointer;border:1px solid var(--nvidia,#10a37f);background:var(--nvidia,#10a37f);color:#0d0d0d;}
   .topic-gen-error-btn:hover{opacity:.9;}
   .topic-gen-error-btn.secondary{background:none;border:1px solid var(--line);color:var(--text-mid);}
   .topic-gen-error-btn.secondary:hover{border-color:var(--text-lo);color:var(--text-hi);}
@@ -359,8 +357,8 @@
   .msg-edit-box textarea:focus{outline:none;border-color:#4a4a4a;}
   .msg-edit-actions{display:flex;gap:8px;justify-content:flex-end;}
   .msg-edit-save, .msg-edit-cancel{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:7px 14px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:background .12s,border-color .12s;}
-  .msg-edit-save{background:var(--nvidia,#ffa028);color:#fff;}
-  .msg-edit-save:hover{background:var(--nvidia-dim,#b26a00);}
+  .msg-edit-save{background:var(--nvidia,#10a37f);color:#fff;}
+  .msg-edit-save:hover{background:var(--nvidia-dim,#0d8b6c);}
   .msg-edit-cancel{background:none;border-color:var(--line);color:var(--text-mid);}
   .msg-edit-cancel:hover{color:var(--text-hi);border-color:var(--text-lo);}
 
@@ -399,24 +397,24 @@
   /* Small dot marker on the person's own messages, so user vs. assistant is identifiable at a
      glance without reintroducing a full avatar/label layout. */
   .msg.user .bubble-wrap{position:relative;}
-  .msg.user .user-dot{position:absolute;left:-16px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--nvidia,#ffa028);}
+  .msg.user .user-dot{position:absolute;left:-16px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--nvidia,#10a37f);}
   @media (max-width:640px){ .msg.user .user-dot{left:-13px;} }
   /* Clear "answer starts here" marker above every assistant message — a small label + rule,
      since the assistant and user bubbles otherwise look identical (same font, no background),
      which made it hard to tell where a long AI-generated question ends and the answer begins. */
   .msg.assistant .answer-marker{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--text-faint);font-family:'Inter',sans-serif;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
-  .msg.assistant .answer-marker .am-dot{flex:none;width:14px;height:14px;border-radius:50%;background:var(--nvidia-glow,rgba(255,160,40,.14));border:1px solid var(--nvidia,#ffa028);}
+  .msg.assistant .answer-marker .am-dot{flex:none;width:14px;height:14px;border-radius:50%;background:var(--nvidia-glow,rgba(16,163,127,.14));border:1px solid var(--nvidia,#10a37f);}
   .msg.assistant .answer-marker .am-line{flex:1;height:1px;background:var(--line-soft);}
   .chat-highlight-mark{background:rgba(255,213,79,.32);border-radius:2px;box-decoration-break:clone;-webkit-box-decoration-break:clone;}
 
   /* ============ MERMAID DIAGRAMS — used by Concept Map mode and any ```mermaid fence ============ */
-  .mermaid-diagram{margin:12px 0;padding:14px;border-radius:12px;background:var(--bg-1,#0c0c0e);border:1px solid var(--line,#26262b);overflow-x:auto;display:flex;justify-content:center;}
+  .mermaid-diagram{margin:12px 0;padding:14px;border-radius:12px;background:var(--bg-1,#171717);border:1px solid var(--line,#2a2a2a);overflow-x:auto;display:flex;justify-content:center;}
   /* Wide flowcharts/trees (many sibling nodes side by side) must NOT be squashed down to fit the
      chat column width — max-width:100% here would force-shrink a wide diagram until its text is
      illegibly tiny. The container already scrolls horizontally (overflow-x:auto above), so let the
      SVG render at its natural size and rely on that scroll instead of destructive scaling. */
   .mermaid-diagram svg{max-width:none;height:auto;}
-  .svg-diagram{margin:12px 0;padding:14px;border-radius:12px;background:var(--bg-1,#0c0c0e);border:1px solid var(--line,#26262b);overflow-x:auto;display:flex;justify-content:center;}
+  .svg-diagram{margin:12px 0;padding:14px;border-radius:12px;background:var(--bg-1,#171717);border:1px solid var(--line,#2a2a2a);overflow-x:auto;display:flex;justify-content:center;}
   .svg-diagram svg{max-width:100%;height:auto;}
   .mermaid-pending{color:var(--text-faint,#7a7a7a);font-family:'Inter',sans-serif;font-size:12.5px;padding:20px;}
   .mermaid-error{color:#ff9d9f;font-family:'Inter',sans-serif;font-size:12px;margin-bottom:8px;}
@@ -498,8 +496,8 @@
   .slash-popup.show{display:block;}
   .slash-item{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;background:none;border:none;border-radius:8px;padding:8px 10px;cursor:pointer;font-family:'Inter',sans-serif;}
   .slash-item:hover, .slash-item.active{background:var(--bg-3);}
-  .slash-cmd{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--nvidia,#ffa028);flex:none;}
-  .slash-item-action .slash-cmd{color:var(--openrouter,#ffb000);}
+  .slash-cmd{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--nvidia,#10a37f);flex:none;}
+  .slash-item-action .slash-cmd{color:var(--openrouter,#ab68ff);}
   .slash-name{font-size:12.5px;font-weight:600;color:var(--text-hi);flex:none;white-space:nowrap;}
   .slash-desc{font-size:11.5px;color:var(--text-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .composer-box{display:flex;align-items:flex-end;gap:10px;background:var(--bg-2);border:1px solid var(--line);border-radius:24px;padding:10px 10px 10px 18px;transition:border-color .15s,box-shadow .15s;}
@@ -547,11 +545,11 @@
   .key-list-item{display:flex;gap:6px;align-items:stretch;}
   .key-list-item .kl-use{flex:1;display:flex;gap:8px;align-items:center;text-align:left;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;color:var(--text-mid);cursor:pointer;font-size:12px;min-width:0;}
   .key-list-item .kl-use:hover{border-color:var(--text-lo);color:var(--text-hi);}
-  .key-list-item.active .kl-use{border-color:rgba(255,160,40,.55);background:var(--nvidia-glow);color:var(--text-hi);}
+  .key-list-item.active .kl-use{border-color:rgba(16,163,127,.55);background:var(--nvidia-glow);color:var(--text-hi);}
   .key-list-item .kl-dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);flex:none;}
   .key-list-item.active .kl-dot{background:var(--nvidia);}
   .key-list-item .kl-mask{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
-  .key-list-item .kl-badge{flex:none;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--nvidia);border:1px solid rgba(255,160,40,.4);border-radius:4px;padding:1px 5px;}
+  .key-list-item .kl-badge{flex:none;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--nvidia);border:1px solid rgba(16,163,127,.4);border-radius:4px;padding:1px 5px;}
   .key-list-item .kl-del{flex:none;width:30px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;color:var(--text-lo);cursor:pointer;font-size:15px;line-height:1;}
   .key-list-item .kl-del:hover{color:#ff7b72;border-color:rgba(255,123,114,.5);background:rgba(255,123,114,.08);}
 
@@ -561,10 +559,10 @@
   .provider-card .pname{font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;color:var(--text-mid);display:flex;align-items:center;gap:6px;}
   .provider-card .pdot{width:6px;height:6px;border-radius:50%;background:var(--text-lo);}
   .provider-card .psub{font-size:10px;color:var(--text-faint);margin-top:4px;font-family:'IBM Plex Mono',monospace;}
-  .provider-card[data-p="nvidia"].active{border-color:rgba(255,160,40,.45);background:linear-gradient(160deg,var(--nvidia-glow),var(--bg-2) 65%);}
+  .provider-card[data-p="nvidia"].active{border-color:rgba(16,163,127,.45);background:linear-gradient(160deg,var(--nvidia-glow),var(--bg-2) 65%);}
   .provider-card[data-p="nvidia"].active .pname{color:var(--nvidia);}
   .provider-card[data-p="nvidia"].active .pdot{background:var(--nvidia);box-shadow:0 0 8px var(--nvidia);}
-  .provider-card[data-p="openrouter"].active{border-color:rgba(255,176,0,.45);background:linear-gradient(160deg,var(--openrouter-glow),var(--bg-2) 65%);}
+  .provider-card[data-p="openrouter"].active{border-color:rgba(171,104,255,.45);background:linear-gradient(160deg,var(--openrouter-glow),var(--bg-2) 65%);}
   .provider-card[data-p="openrouter"].active .pname{color:var(--openrouter);}
   .provider-card[data-p="openrouter"].active .pdot{background:var(--openrouter);box-shadow:0 0 8px var(--openrouter);}
   .provider-card[data-p="groq"].active{border-color:rgba(255,92,168,.45);background:linear-gradient(160deg,var(--groq-glow),var(--bg-2) 65%);}
@@ -573,7 +571,7 @@
 
   .inline-msg{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;line-height:1.55;padding:9px 11px;border-radius:8px;border:1px solid;}
   .inline-msg.warn{color:var(--warn);border-color:rgba(232,176,75,.35);background:rgba(232,176,75,.08);}
-  .inline-msg.ok{color:var(--nvidia);border-color:rgba(255,160,40,.3);background:var(--nvidia-glow);}
+  .inline-msg.ok{color:var(--nvidia);border-color:rgba(16,163,127,.3);background:var(--nvidia-glow);}
   .inline-msg svg{flex:none;margin-top:1px;}
   .field-desc a{color:var(--nvidia);text-decoration:none;}
   .field-desc a:hover{text-decoration:underline;}
@@ -633,35 +631,6 @@
   [data-theme="graphite"] body{--paper:#131313;--bg-0:#131313;}
   body.compact .msg{padding:12px 0;}
   body.compact .bubble{font-size:14px;}
-
-  /* ============ BLOOMBERG TERMINAL SKIN (Bullion-Board DESIGN.md) ============
-     Terminal Black #030304 canvas, Panel #0c0c0e, amber #ffa028 functions,
-     security-yellow #ffb000 second accent, IBM Plex Mono everywhere, 3px
-     panels/buttons, 2px inputs, uppercase micro-headers. All accents flow
-     through the remapped vars above, so provider badges, answer markers,
-     user-message gradients and focus rings follow automatically. */
-  [data-theme="graphite"] body{--paper:#030304;--bg-0:#030304;}
-  .topbar{background:#030304;border-bottom:1px solid rgba(255,160,40,.4);}
-  .route-chip,.model-dropdown{font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;}
-  .topics-head h2,.library-head h2,.modes-head h2,.modal-head h2{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--nvidia);}
-  .btn-primary{background:var(--nvidia);color:#0d0d0d;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:3px;}
-  .btn-primary:hover{background:var(--nvidia-dim);transform:none;}
-  .btn-primary[data-provider="openrouter"]{background:var(--nvidia);color:#0d0d0d;}
-  .btn-primary[data-provider="groq"]{background:var(--groq);color:#0d0d0d;}
-  .btn-secondary{border-radius:3px;text-transform:uppercase;letter-spacing:.05em;}
-  .menu-dropdown,.modal,.modes-modal,.topics-modal,.library-modal,.pdf-viewer-modal{border-radius:3px;}
-  .share-btn,.side-toggle,.modes-toggle{border-radius:3px;text-transform:uppercase;letter-spacing:.04em;}
-  .chip,.topic-item,.topic-item.flat,.library-item,.mode-card,.li-icon{border-radius:3px;}
-  .side-composer-box,.topics-search-box,.add-book-box,.library-search-box{border-radius:2px;}
-  .key-row input,.model-input-row input,.msg-edit-box textarea,.paste-toc-wrap textarea,.notes-add-row textarea{border-radius:2px;}
-  .bubble pre,.side-msg .bubble pre,.mermaid-diagram,.svg-diagram{border-radius:3px;}
-  .branch-new-btn,.msg-action-btn,.topic-gen-error-btn,.topic-vol-edit-btn,.topic-vol-remove-btn{border-radius:3px;text-transform:uppercase;letter-spacing:.04em;}
-  .side-send-btn,.pdf-attach-chip,.toc-badge,.mchk{border-radius:3px;}
-  .mcount{border-radius:3px;}
-  .notes-add-btn,.msg-edit-save{color:#0d0d0d;}
-  .bubble a{color:var(--nvidia);}
-  textarea,input,select{font-family:inherit;}
-  ::-webkit-scrollbar-thumb{background:#26262b;}
 </style>
 </head>
 <body>
@@ -735,16 +704,16 @@
       <div class="thread-inner" id="threadInner">
         <div class="empty" id="emptyState">
           <svg class="empty-diagram" viewBox="0 0 420 150" fill="none">
-            <path d="M40 75 C 130 75, 130 34, 210 34 S 290 75, 380 34" stroke="#26262b" stroke-width="1.4" fill="none"/>
-            <path d="M40 75 C 130 75, 130 116, 210 116 S 290 75, 380 116" stroke="#26262b" stroke-width="1.4" fill="none"/>
-            <path id="pulseTop" d="M40 75 C 130 75, 130 34, 210 34 S 290 75, 380 34" stroke="#ffa028" stroke-width="1.6" fill="none" opacity=".85"/>
-            <path id="pulseBottom" d="M40 75 C 130 75, 130 116, 210 116 S 290 75, 380 116" stroke="#ffb000" stroke-width="1.6" fill="none" opacity=".18"/>
+            <path d="M40 75 C 130 75, 130 34, 210 34 S 290 75, 380 34" stroke="#212121" stroke-width="1.4" fill="none"/>
+            <path d="M40 75 C 130 75, 130 116, 210 116 S 290 75, 380 116" stroke="#212121" stroke-width="1.4" fill="none"/>
+<path id="pulseTop" d="M40 75 C 130 75, 130 34, 210 34 S 290 75, 380 34" stroke="#10a37f" stroke-width="1.6" fill="none" opacity=".85"/>
+  <path id="pulseBottom" d="M40 75 C 130 75, 130 116, 210 116 S 290 75, 380 116" stroke="#ab68ff" stroke-width="1.6" fill="none" opacity=".18"/>
             <circle cx="40" cy="75" r="5" fill="#f5f5f4"/>
             <text x="40" y="100" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#5b5b62">you</text>
-            <circle cx="380" cy="34" r="5" fill="#ffa028"/>
-            <text x="380" y="20" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#ffa028">nvidia</text>
-            <circle cx="380" cy="116" r="5" fill="#ffb000"/>
-            <text x="380" y="140" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#ffb000">openrouter</text>
+<circle cx="380" cy="34" r="5" fill="#10a37f"/>
+  <text x="380" y="20" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#10a37f">nvidia</text>
+  <circle cx="380" cy="116" r="5" fill="#ab68ff"/>
+  <text x="380" y="140" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#ab68ff">openrouter</text>
             <circle cx="210" cy="75" r="7" fill="none" stroke="#f5f5f4" stroke-width="1.4"/>
             <circle cx="210" cy="75" r="2.2" fill="#f5f5f4"/>
           </svg>
@@ -756,7 +725,7 @@
             <button class="chip" data-fill="Suggest a simple dinner recipe.">simple dinner recipe</button>
           </div>
           <div class="suggestions suggestions-secondary">
-            <button class="chip" id="emptyTopicsChip" style="border-color:rgba(255,160,40,.35);color:var(--nvidia);">📚 browse book library</button>
+            <button class="chip" id="emptyTopicsChip" style="border-color:rgba(16,163,127,.35);color:var(--nvidia);">📚 browse book library</button>
           </div>
         </div>
       </div>
@@ -930,11 +899,11 @@
           <p class="field-desc">Nexus is dark-first. Both options keep contrast accessible.</p>
           <div class="theme-grid" style="margin-top:10px;">
             <div class="theme-swatch active" data-theme="ink" id="themeInk">
-              <div class="swatch-bar"><div class="swatch-dot" style="background:#0d0d0d;border:1px solid #26262b;"></div><div class="swatch-dot" style="background:#ffa028;"></div><div class="swatch-dot" style="background:#ffb000;"></div></div>
+              <div class="swatch-bar"><div class="swatch-dot" style="background:#0d0d0d;border:1px solid #2a2a2a;"></div><div class="swatch-dot" style="background:#10a37f;"></div><div class="swatch-dot" style="background:#ab68ff;"></div></div>
               <div class="tname">Ink (default)</div>
             </div>
             <div class="theme-swatch" data-theme="graphite" id="themeGraphite">
-              <div class="swatch-bar"><div class="swatch-dot" style="background:#131313;border:1px solid #2f2f2f;"></div><div class="swatch-dot" style="background:#ffa028;"></div><div class="swatch-dot" style="background:#ffb000;"></div></div>
+              <div class="swatch-bar"><div class="swatch-dot" style="background:#131313;border:1px solid #2f2f2f;"></div><div class="swatch-dot" style="background:#10a37f;"></div><div class="swatch-dot" style="background:#ab68ff;"></div></div>
               <div class="tname">Graphite</div>
             </div>
           </div>
@@ -1299,6 +1268,7 @@
     LS.set('nexus_pulse', applied.pulse);
   }
 
+  const $ = id => document.getElementById(id);
   const els = {
     shell: $('shell'), menuBtn: $('menuBtn'), menuDropdown: $('menuDropdown'),
     newChatBtn: $('newChatBtn'), searchInput: $('searchInput'), convoList: $('convoList'),
@@ -1516,23 +1486,23 @@
           suppressErrorRendering: true,
           themeVariables: {
             darkMode: true,
-            background: '#0c0c0e',
-            primaryColor: '#121214',
-            primaryTextColor: '#f5f5f4',
+            background: '#171717',
+            primaryColor: '#242424',
+            primaryTextColor: '#ececec',
             primaryBorderColor: '#4a8fe0',
-            secondaryColor: '#121214',
-            secondaryTextColor: '#f5f5f4',
+            secondaryColor: '#242424',
+            secondaryTextColor: '#ececec',
             secondaryBorderColor: '#e05c5c',
-            tertiaryColor: '#121214',
-            tertiaryTextColor: '#f5f5f4',
+            tertiaryColor: '#242424',
+            tertiaryTextColor: '#ececec',
             tertiaryBorderColor: '#3ecf8e',
-            lineColor: '#a1a1aa',
-            textColor: '#f5f5f4',
-            mainBkg: '#121214',
-            nodeTextColor: '#f5f5f4',
-            clusterBkg: '#0c0c0e',
-            clusterBorder: '#26262b',
-            edgeLabelBackground: '#0c0c0e',
+            lineColor: '#8a8a8a',
+            textColor: '#ececec',
+            mainBkg: '#242424',
+            nodeTextColor: '#ececec',
+            clusterBkg: '#1e1e1e',
+            clusterBorder: '#4a4a4a',
+            edgeLabelBackground: '#171717',
             fontFamily: 'IBM Plex Mono, monospace',
             fontSize: '14px'
           },
@@ -2447,9 +2417,9 @@
     if (els.pulseTop) els.pulseTop.style.opacity = applied.pulse ? (p === 'nvidia' ? '.85' : '.18') : '0';
     if (els.pulseBottom) els.pulseBottom.style.opacity = applied.pulse ? (p === 'nvidia' ? '.85' : (p === 'groq' ? '.5' : '.18')) : '0';
     if (els.pulseBottom && p === 'groq') els.pulseBottom.setAttribute('stroke', '#ff5ca8');
-    else if (els.pulseBottom) els.pulseBottom.setAttribute('stroke', '#ffb000');
+    else if (els.pulseBottom) els.pulseBottom.setAttribute('stroke', '#ab68ff');
     if (els.pulseTop && p === 'groq') els.pulseTop.setAttribute('stroke', '#ff5ca8');
-    else if (els.pulseTop) els.pulseTop.setAttribute('stroke', '#ffa028');
+    else if (els.pulseTop) els.pulseTop.setAttribute('stroke', '#10a37f');
   }
 
   /* ---------------- composer ---------------- */
