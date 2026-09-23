@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -7,8 +7,8 @@
 
 <!-- PWA: installable as a standalone app on Chrome (desktop + Android) and other browsers -->
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#0d0d0d">
-<meta name="background-color" content="#0d0d0d">
+<meta name="theme-color" content="#030304">
+<meta name="background-color" content="#030304">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -26,33 +26,38 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 <style>
   :root{
-    /* ChatGPT-style near-black palette */
-    --bg-0:#0d0d0d;           /* app background */
-    --bg-sidebar:#000000;      /* sidebar */
-    --bg-1:#171717;            /* raised surfaces / hover */
-    --bg-2:#1f1f1f;            /* inputs, cards */
-    --bg-3:#2a2a2a;            /* borders on surfaces */
-    --line:#2a2a2a;
-    --line-soft:#212121;
-    --text-hi:#ececec;
-    --text-mid:#b4b4b4;
-    --text-lo:#8e8ea0;
-    --text-faint:#676767;
+    /* Bloomberg-terminal skin (Bullion-Board DESIGN.md): pure-black canvas,
+       amber functions, security-yellow second accent, mono everywhere.
+       Independent homage — no Bloomberg trademarks, logo, or wordmark. */
+    --bg-0:#030304;              /* app background */
+    --bg-sidebar:#000000;        /* sidebar */
+    --bg-1:#0c0c0e;              /* raised surfaces / hover */
+    --bg-2:#121214;              /* inputs, cards */
+    --bg-3:#26262b;              /* borders on surfaces */
+    --line:#26262b;
+    --line-soft:#1c1c20;
+    --text-hi:#f5f5f4;
+    --text-mid:#a1a1aa;
+    --text-lo:#a1a1aa;
+    --text-faint:#5b5b62;
 
-    --nvidia:#10a37f;          /* ChatGPT green, repurposed as "nvidia" accent */
-    --nvidia-dim:#0d8b6c;
-    --nvidia-glow:rgba(16,163,127,.14);
-    --openrouter:#ab68ff;      /* purple accent for second provider */
-    --openrouter-dim:#8e4fe0;
-    --openrouter-glow:rgba(171,104,255,.14);
-    --danger:#f2555a;
+    --nvidia:#ffa028;            /* primary accent = terminal amber */
+    --nvidia-dim:#b26a00;
+    --nvidia-glow:rgba(255,160,40,.14);
+    --openrouter:#ffb000;        /* secondary accent = security yellow */
+    --openrouter-dim:#b27a00;
+    --openrouter-glow:rgba(255,176,0,.14);
+    --groq:#ff5ca8;              /* third accent = groq pink */
+    --groq-dim:#c23a72;
+    --groq-glow:rgba(255,92,168,.14);
+    --danger:#ff453a;
     --warn:#e8b04b;
-    --paper:#0d0d0d;
+    --paper:#030304;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
-  body{margin:0;background:var(--paper);color:var(--text-hi);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased;font-size:15px;}
-  ::selection{background:rgba(16,163,127,.28);}
+  body{margin:0;background:var(--paper);color:var(--text-hi);font-family:'IBM Plex Mono',ui-monospace,'Cascadia Mono',Consolas,monospace;-webkit-font-smoothing:antialiased;font-size:14px;font-variant-numeric:tabular-nums;}
+  ::selection{background:rgba(255,160,40,.28);}
   ::-webkit-scrollbar{width:8px;height:8px;}
   ::-webkit-scrollbar-track{background:transparent;}
   ::-webkit-scrollbar-thumb{background:var(--bg-3);border-radius:8px;}
@@ -74,7 +79,7 @@
   .menu-dropdown-wrap{position:relative;flex:none;}
   .menu-dropdown{
     display:none;position:fixed;min-width:190px;
-    background:var(--bg-1,#171717);border:1px solid var(--line);border-radius:12px;
+    background:var(--bg-1,#0c0c0e);border:1px solid var(--line);border-radius:12px;
     box-shadow:0 12px 28px rgba(0,0,0,.5);padding:6px;z-index:99999;flex-direction:column;gap:1px;
   }
   .menu-dropdown.show{display:flex;}
@@ -96,9 +101,9 @@
 
   /* Compact icon actions that remain in the topbar (panel toggles, not navigation). */
   .topbar-icons{display:flex;align-items:center;gap:2px;margin-left:4px;}
-  #installAppBtn{color:var(--nvidia,#10a37f);}
-  #installAppBtn:hover{background:var(--nvidia-glow,rgba(16,163,127,.14));color:var(--nvidia,#10a37f);}
-  @keyframes installPulse{0%,100%{box-shadow:0 0 0 0 rgba(16,163,127,.35);}50%{box-shadow:0 0 0 4px rgba(16,163,127,0);}}
+  #installAppBtn{color:var(--nvidia,#ffa028);}
+  #installAppBtn:hover{background:var(--nvidia-glow,rgba(255,160,40,.14));color:var(--nvidia,#ffa028);}
+  @keyframes installPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,160,40,.35);}50%{box-shadow:0 0 0 4px rgba(255,160,40,0);}}
   #installAppBtn.pulse{animation:installPulse 2s ease-in-out 3;border-radius:8px;}
   .topbar-icons .rail-icon-btn{width:30px;height:30px;}
 
@@ -107,8 +112,9 @@
   .topbar{display:flex;align-items:center;gap:13px;padding:13px 20px;background:rgba(13,13,13,.9);backdrop-filter:blur(8px);flex-wrap:wrap;row-gap:8px;}
   .route-chip{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:5px 12px 5px 9px;border-radius:100px;border:1px solid;display:flex;align-items:center;gap:6px;color:var(--text-hi);}
   .route-chip .rdot{width:6px;height:6px;border-radius:50%;background:currentColor;}
-  .route-chip.nvidia{color:var(--nvidia);border-color:rgba(16,163,127,.35);background:var(--nvidia-glow);}
-  .route-chip.openrouter{color:var(--openrouter);border-color:rgba(171,104,255,.35);background:var(--openrouter-glow);}
+  .route-chip.nvidia{color:var(--nvidia);border-color:rgba(255,160,40,.35);background:var(--nvidia-glow);}
+  .route-chip.openrouter{color:var(--openrouter);border-color:rgba(255,176,0,.35);background:var(--openrouter-glow);}
+  .route-chip.groq{color:var(--groq);border-color:rgba(255,92,168,.35);background:var(--groq-glow);}
   .model-dropdown{display:flex;align-items:center;gap:5px;background:none;border:none;color:var(--text-hi);font-family:'Inter',sans-serif;font-size:16px;font-weight:600;cursor:pointer;padding:6px 8px;border-radius:8px;transition:background .12s ease;}
   .model-dropdown:hover{background:var(--bg-1);}
   .model-dropdown svg{color:var(--text-mid);}
@@ -127,10 +133,10 @@
   .modes-toggle{display:flex;align-items:center;gap:7px;background:var(--bg-1);border:1px solid var(--line);color:var(--text-mid);font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;padding:6px 13px 6px 11px;border-radius:20px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;margin-right:8px;max-width:260px;}
   .modes-toggle #modesLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .modes-toggle .mdot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);flex:none;transition:background .15s,box-shadow .15s;}
-  .modes-toggle.on{color:var(--openrouter);border-color:rgba(171,104,255,.4);background:var(--openrouter-glow);}
+  .modes-toggle.on{color:var(--openrouter);border-color:rgba(255,176,0,.4);background:var(--openrouter-glow);}
   .modes-toggle.on .mdot{background:var(--openrouter);box-shadow:0 0 7px var(--openrouter);}
   .modes-toggle:hover{border-color:var(--text-lo);}
-  .modes-toggle .mcount{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.03em;opacity:.85;background:rgba(171,104,255,.22);color:var(--openrouter);border-radius:100px;padding:1px 6px;margin-left:1px;}
+  .modes-toggle .mcount{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:.03em;opacity:.85;background:rgba(255,176,0,.22);color:var(--openrouter);border-radius:100px;padding:1px 6px;margin-left:1px;}
 
   /* ============ MODES MODAL ============ */
   .modes-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
@@ -188,7 +194,7 @@
   .add-book-btn:disabled{opacity:.55;cursor:default;}
   .add-book-status{font-size:11.5px;color:var(--text-faint);padding:6px 8px 0;min-height:14px;}
   .add-book-status.error{color:#ff9d9f;}
-  .add-book-status.success{color:var(--nvidia,#10a37f);}
+  .add-book-status.success{color:var(--nvidia,#ffa028);}
   .topics-body{overflow-y:auto;padding:10px 14px 10px;flex:1;}
   .topics-hint{font-size:11px;color:var(--text-faint);padding:2px 8px 10px;}
 
@@ -257,8 +263,8 @@
   .notes-add-row{display:flex;align-items:flex-end;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line-soft);flex:none;}
   .notes-add-row textarea{flex:1;resize:none;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;color:var(--text-hi);font-family:'Inter',sans-serif;font-size:12.5px;padding:8px 10px;max-height:90px;line-height:1.4;}
   .notes-add-row textarea:focus{outline:none;border-color:#4a4a4a;}
-  .notes-add-btn{flex:none;width:30px;height:30px;border-radius:8px;border:none;background:var(--nvidia,#10a37f);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;}
-  .notes-add-btn:hover{background:var(--nvidia-dim,#0d8b6c);}
+  .notes-add-btn{flex:none;width:30px;height:30px;border-radius:8px;border:none;background:var(--nvidia,#ffa028);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;}
+  .notes-add-btn:hover{background:var(--nvidia-dim,#b26a00);}
   .notes-list{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
   .notes-empty{color:var(--text-faint);font-family:'Inter',sans-serif;font-size:12px;text-align:center;padding:30px 10px;line-height:1.6;}
   .note-card{--nc-color:#ffe066;--nc-color-dark:#e0c040;position:relative;padding:12px 12px 10px;border-radius:2px 10px 10px 2px;background:linear-gradient(160deg,var(--nc-color) 0%,var(--nc-color-dark) 100%);color:#2a2416;box-shadow:0 4px 10px rgba(0,0,0,.3);font-family:'Inter',sans-serif;font-size:12.5px;line-height:1.48;}
@@ -323,7 +329,7 @@
   .topic-gen-error-banner{display:flex;flex-direction:column;gap:8px;background:rgba(255,157,159,.08);border:1px solid rgba(255,157,159,.3);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
   .topic-gen-error-msg{font-size:12.5px;line-height:1.5;color:var(--text-mid);}
   .topic-gen-error-actions{display:flex;gap:8px;}
-  .topic-gen-error-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:6px 13px;border-radius:8px;cursor:pointer;border:1px solid var(--nvidia,#10a37f);background:var(--nvidia,#10a37f);color:#0d0d0d;}
+  .topic-gen-error-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:6px 13px;border-radius:8px;cursor:pointer;border:1px solid var(--nvidia,#ffa028);background:var(--nvidia,#ffa028);color:#0d0d0d;}
   .topic-gen-error-btn:hover{opacity:.9;}
   .topic-gen-error-btn.secondary{background:none;border:1px solid var(--line);color:var(--text-mid);}
   .topic-gen-error-btn.secondary:hover{border-color:var(--text-lo);color:var(--text-hi);}
@@ -353,8 +359,8 @@
   .msg-edit-box textarea:focus{outline:none;border-color:#4a4a4a;}
   .msg-edit-actions{display:flex;gap:8px;justify-content:flex-end;}
   .msg-edit-save, .msg-edit-cancel{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:7px 14px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:background .12s,border-color .12s;}
-  .msg-edit-save{background:var(--nvidia,#10a37f);color:#fff;}
-  .msg-edit-save:hover{background:var(--nvidia-dim,#0d8b6c);}
+  .msg-edit-save{background:var(--nvidia,#ffa028);color:#fff;}
+  .msg-edit-save:hover{background:var(--nvidia-dim,#b26a00);}
   .msg-edit-cancel{background:none;border-color:var(--line);color:var(--text-mid);}
   .msg-edit-cancel:hover{color:var(--text-hi);border-color:var(--text-lo);}
 
@@ -393,24 +399,24 @@
   /* Small dot marker on the person's own messages, so user vs. assistant is identifiable at a
      glance without reintroducing a full avatar/label layout. */
   .msg.user .bubble-wrap{position:relative;}
-  .msg.user .user-dot{position:absolute;left:-16px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--nvidia,#10a37f);}
+  .msg.user .user-dot{position:absolute;left:-16px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--nvidia,#ffa028);}
   @media (max-width:640px){ .msg.user .user-dot{left:-13px;} }
   /* Clear "answer starts here" marker above every assistant message — a small label + rule,
      since the assistant and user bubbles otherwise look identical (same font, no background),
      which made it hard to tell where a long AI-generated question ends and the answer begins. */
   .msg.assistant .answer-marker{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--text-faint);font-family:'Inter',sans-serif;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
-  .msg.assistant .answer-marker .am-dot{flex:none;width:14px;height:14px;border-radius:50%;background:var(--nvidia-glow,rgba(16,163,127,.14));border:1px solid var(--nvidia,#10a37f);}
+  .msg.assistant .answer-marker .am-dot{flex:none;width:14px;height:14px;border-radius:50%;background:var(--nvidia-glow,rgba(255,160,40,.14));border:1px solid var(--nvidia,#ffa028);}
   .msg.assistant .answer-marker .am-line{flex:1;height:1px;background:var(--line-soft);}
   .chat-highlight-mark{background:rgba(255,213,79,.32);border-radius:2px;box-decoration-break:clone;-webkit-box-decoration-break:clone;}
 
   /* ============ MERMAID DIAGRAMS — used by Concept Map mode and any ```mermaid fence ============ */
-  .mermaid-diagram{margin:12px 0;padding:14px;border-radius:12px;background:var(--bg-1,#171717);border:1px solid var(--line,#2a2a2a);overflow-x:auto;display:flex;justify-content:center;}
+  .mermaid-diagram{margin:12px 0;padding:14px;border-radius:12px;background:var(--bg-1,#0c0c0e);border:1px solid var(--line,#26262b);overflow-x:auto;display:flex;justify-content:center;}
   /* Wide flowcharts/trees (many sibling nodes side by side) must NOT be squashed down to fit the
      chat column width — max-width:100% here would force-shrink a wide diagram until its text is
      illegibly tiny. The container already scrolls horizontally (overflow-x:auto above), so let the
      SVG render at its natural size and rely on that scroll instead of destructive scaling. */
   .mermaid-diagram svg{max-width:none;height:auto;}
-  .svg-diagram{margin:12px 0;padding:14px;border-radius:12px;background:var(--bg-1,#171717);border:1px solid var(--line,#2a2a2a);overflow-x:auto;display:flex;justify-content:center;}
+  .svg-diagram{margin:12px 0;padding:14px;border-radius:12px;background:var(--bg-1,#0c0c0e);border:1px solid var(--line,#26262b);overflow-x:auto;display:flex;justify-content:center;}
   .svg-diagram svg{max-width:100%;height:auto;}
   .mermaid-pending{color:var(--text-faint,#7a7a7a);font-family:'Inter',sans-serif;font-size:12.5px;padding:20px;}
   .mermaid-error{color:#ff9d9f;font-family:'Inter',sans-serif;font-size:12px;margin-bottom:8px;}
@@ -492,8 +498,8 @@
   .slash-popup.show{display:block;}
   .slash-item{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;background:none;border:none;border-radius:8px;padding:8px 10px;cursor:pointer;font-family:'Inter',sans-serif;}
   .slash-item:hover, .slash-item.active{background:var(--bg-3);}
-  .slash-cmd{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--nvidia,#10a37f);flex:none;}
-  .slash-item-action .slash-cmd{color:var(--openrouter,#ab68ff);}
+  .slash-cmd{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--nvidia,#ffa028);flex:none;}
+  .slash-item-action .slash-cmd{color:var(--openrouter,#ffb000);}
   .slash-name{font-size:12.5px;font-weight:600;color:var(--text-hi);flex:none;white-space:nowrap;}
   .slash-desc{font-size:11.5px;color:var(--text-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .composer-box{display:flex;align-items:flex-end;gap:10px;background:var(--bg-2);border:1px solid var(--line);border-radius:24px;padding:10px 10px 10px 18px;transition:border-color .15s,box-shadow .15s;}
@@ -502,6 +508,7 @@
   textarea#messageInput::placeholder{color:var(--text-lo);}
   .send-btn{flex:none;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:var(--text-hi);color:#0d0d0d;display:flex;align-items:center;justify-content:center;transition:transform .12s,opacity .15s,background .15s;}
   .send-btn[data-provider="openrouter"]{background:var(--text-hi);color:#0d0d0d;}
+  .send-btn[data-provider="groq"]{background:var(--groq);color:#0d0d0d;}
   .send-btn:hover:not(:disabled){transform:scale(1.05);}
   .send-btn:disabled{opacity:.3;cursor:not-allowed;}
   .composer-foot{display:flex;justify-content:space-between;margin-top:9px;padding:0 8px;}
@@ -536,23 +543,37 @@
   .key-row{position:relative;}
   .key-row .visibility{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-lo);cursor:pointer;padding:4px 6px;font-size:10px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.04em;border-radius:4px;}
   .key-row .visibility:hover{color:var(--text-mid);background:var(--bg-3);}
+  .key-list{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;}
+  .key-list-item{display:flex;gap:6px;align-items:stretch;}
+  .key-list-item .kl-use{flex:1;display:flex;gap:8px;align-items:center;text-align:left;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;color:var(--text-mid);cursor:pointer;font-size:12px;min-width:0;}
+  .key-list-item .kl-use:hover{border-color:var(--text-lo);color:var(--text-hi);}
+  .key-list-item.active .kl-use{border-color:rgba(255,160,40,.55);background:var(--nvidia-glow);color:var(--text-hi);}
+  .key-list-item .kl-dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);flex:none;}
+  .key-list-item.active .kl-dot{background:var(--nvidia);}
+  .key-list-item .kl-mask{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
+  .key-list-item .kl-badge{flex:none;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--nvidia);border:1px solid rgba(255,160,40,.4);border-radius:4px;padding:1px 5px;}
+  .key-list-item .kl-del{flex:none;width:30px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;color:var(--text-lo);cursor:pointer;font-size:15px;line-height:1;}
+  .key-list-item .kl-del:hover{color:#ff7b72;border-color:rgba(255,123,114,.5);background:rgba(255,123,114,.08);}
 
-  .provider-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .provider-switch{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
   .provider-card{position:relative;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;cursor:pointer;text-align:left;transition:border-color .18s,background .18s,transform .12s;}
   .provider-card:hover{transform:translateY(-1px);}
   .provider-card .pname{font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;color:var(--text-mid);display:flex;align-items:center;gap:6px;}
   .provider-card .pdot{width:6px;height:6px;border-radius:50%;background:var(--text-lo);}
   .provider-card .psub{font-size:10px;color:var(--text-faint);margin-top:4px;font-family:'IBM Plex Mono',monospace;}
-  .provider-card[data-p="nvidia"].active{border-color:rgba(16,163,127,.45);background:linear-gradient(160deg,var(--nvidia-glow),var(--bg-2) 65%);}
+  .provider-card[data-p="nvidia"].active{border-color:rgba(255,160,40,.45);background:linear-gradient(160deg,var(--nvidia-glow),var(--bg-2) 65%);}
   .provider-card[data-p="nvidia"].active .pname{color:var(--nvidia);}
   .provider-card[data-p="nvidia"].active .pdot{background:var(--nvidia);box-shadow:0 0 8px var(--nvidia);}
-  .provider-card[data-p="openrouter"].active{border-color:rgba(171,104,255,.45);background:linear-gradient(160deg,var(--openrouter-glow),var(--bg-2) 65%);}
+  .provider-card[data-p="openrouter"].active{border-color:rgba(255,176,0,.45);background:linear-gradient(160deg,var(--openrouter-glow),var(--bg-2) 65%);}
   .provider-card[data-p="openrouter"].active .pname{color:var(--openrouter);}
   .provider-card[data-p="openrouter"].active .pdot{background:var(--openrouter);box-shadow:0 0 8px var(--openrouter);}
+  .provider-card[data-p="groq"].active{border-color:rgba(255,92,168,.45);background:linear-gradient(160deg,var(--groq-glow),var(--bg-2) 65%);}
+  .provider-card[data-p="groq"].active .pname{color:var(--groq);}
+  .provider-card[data-p="groq"].active .pdot{background:var(--groq);box-shadow:0 0 8px var(--groq);}
 
   .inline-msg{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;line-height:1.55;padding:9px 11px;border-radius:8px;border:1px solid;}
   .inline-msg.warn{color:var(--warn);border-color:rgba(232,176,75,.35);background:rgba(232,176,75,.08);}
-  .inline-msg.ok{color:var(--nvidia);border-color:rgba(16,163,127,.3);background:var(--nvidia-glow);}
+  .inline-msg.ok{color:var(--nvidia);border-color:rgba(255,160,40,.3);background:var(--nvidia-glow);}
   .inline-msg svg{flex:none;margin-top:1px;}
   .field-desc a{color:var(--nvidia);text-decoration:none;}
   .field-desc a:hover{text-decoration:underline;}
@@ -604,6 +625,7 @@
   .btn-primary{background:var(--text-hi);color:#0d0d0d;border:none;font-size:12.5px;font-weight:600;padding:9px 18px;border-radius:20px;cursor:pointer;transition:transform .12s,opacity .15s;}
   .btn-primary:hover{transform:translateY(-1px);}
   .btn-primary[data-provider="openrouter"]{background:var(--text-hi);color:#0d0d0d;}
+  .btn-primary[data-provider="groq"]{background:var(--groq);color:#0d0d0d;}
 
   button:focus-visible,input:focus-visible,.chip:focus-visible,.provider-card:focus-visible,.convo-item:focus-visible{outline:2px solid var(--nvidia);outline-offset:2px;}
   textarea:focus-visible{outline:none;}
@@ -611,6 +633,35 @@
   [data-theme="graphite"] body{--paper:#131313;--bg-0:#131313;}
   body.compact .msg{padding:12px 0;}
   body.compact .bubble{font-size:14px;}
+
+  /* ============ BLOOMBERG TERMINAL SKIN (Bullion-Board DESIGN.md) ============
+     Terminal Black #030304 canvas, Panel #0c0c0e, amber #ffa028 functions,
+     security-yellow #ffb000 second accent, IBM Plex Mono everywhere, 3px
+     panels/buttons, 2px inputs, uppercase micro-headers. All accents flow
+     through the remapped vars above, so provider badges, answer markers,
+     user-message gradients and focus rings follow automatically. */
+  [data-theme="graphite"] body{--paper:#030304;--bg-0:#030304;}
+  .topbar{background:#030304;border-bottom:1px solid rgba(255,160,40,.4);}
+  .route-chip,.model-dropdown{font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;}
+  .topics-head h2,.library-head h2,.modes-head h2,.modal-head h2{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--nvidia);}
+  .btn-primary{background:var(--nvidia);color:#0d0d0d;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:3px;}
+  .btn-primary:hover{background:var(--nvidia-dim);transform:none;}
+  .btn-primary[data-provider="openrouter"]{background:var(--nvidia);color:#0d0d0d;}
+  .btn-primary[data-provider="groq"]{background:var(--groq);color:#0d0d0d;}
+  .btn-secondary{border-radius:3px;text-transform:uppercase;letter-spacing:.05em;}
+  .menu-dropdown,.modal,.modes-modal,.topics-modal,.library-modal,.pdf-viewer-modal{border-radius:3px;}
+  .share-btn,.side-toggle,.modes-toggle{border-radius:3px;text-transform:uppercase;letter-spacing:.04em;}
+  .chip,.topic-item,.topic-item.flat,.library-item,.mode-card,.li-icon{border-radius:3px;}
+  .side-composer-box,.topics-search-box,.add-book-box,.library-search-box{border-radius:2px;}
+  .key-row input,.model-input-row input,.msg-edit-box textarea,.paste-toc-wrap textarea,.notes-add-row textarea{border-radius:2px;}
+  .bubble pre,.side-msg .bubble pre,.mermaid-diagram,.svg-diagram{border-radius:3px;}
+  .branch-new-btn,.msg-action-btn,.topic-gen-error-btn,.topic-vol-edit-btn,.topic-vol-remove-btn{border-radius:3px;text-transform:uppercase;letter-spacing:.04em;}
+  .side-send-btn,.pdf-attach-chip,.toc-badge,.mchk{border-radius:3px;}
+  .mcount{border-radius:3px;}
+  .notes-add-btn,.msg-edit-save{color:#0d0d0d;}
+  .bubble a{color:var(--nvidia);}
+  textarea,input,select{font-family:inherit;}
+  ::-webkit-scrollbar-thumb{background:#26262b;}
 </style>
 </head>
 <body>
@@ -684,18 +735,18 @@
       <div class="thread-inner" id="threadInner">
         <div class="empty" id="emptyState">
           <svg class="empty-diagram" viewBox="0 0 420 150" fill="none">
-            <path d="M40 75 C 130 75, 130 34, 210 34 S 290 75, 380 34" stroke="#212121" stroke-width="1.4" fill="none"/>
-            <path d="M40 75 C 130 75, 130 116, 210 116 S 290 75, 380 116" stroke="#212121" stroke-width="1.4" fill="none"/>
-            <path id="pulseTop" d="M40 75 C 130 75, 130 34, 210 34 S 290 75, 380 34" stroke="#10a37f" stroke-width="1.6" fill="none" opacity=".85"/>
-            <path id="pulseBottom" d="M40 75 C 130 75, 130 116, 210 116 S 290 75, 380 116" stroke="#ab68ff" stroke-width="1.6" fill="none" opacity=".18"/>
-            <circle cx="40" cy="75" r="5" fill="#ececec"/>
-            <text x="40" y="100" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#676767">you</text>
-            <circle cx="380" cy="34" r="5" fill="#10a37f"/>
-            <text x="380" y="20" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#10a37f">nvidia</text>
-            <circle cx="380" cy="116" r="5" fill="#ab68ff"/>
-            <text x="380" y="140" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#ab68ff">openrouter</text>
-            <circle cx="210" cy="75" r="7" fill="none" stroke="#ececec" stroke-width="1.4"/>
-            <circle cx="210" cy="75" r="2.2" fill="#ececec"/>
+            <path d="M40 75 C 130 75, 130 34, 210 34 S 290 75, 380 34" stroke="#26262b" stroke-width="1.4" fill="none"/>
+            <path d="M40 75 C 130 75, 130 116, 210 116 S 290 75, 380 116" stroke="#26262b" stroke-width="1.4" fill="none"/>
+            <path id="pulseTop" d="M40 75 C 130 75, 130 34, 210 34 S 290 75, 380 34" stroke="#ffa028" stroke-width="1.6" fill="none" opacity=".85"/>
+            <path id="pulseBottom" d="M40 75 C 130 75, 130 116, 210 116 S 290 75, 380 116" stroke="#ffb000" stroke-width="1.6" fill="none" opacity=".18"/>
+            <circle cx="40" cy="75" r="5" fill="#f5f5f4"/>
+            <text x="40" y="100" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#5b5b62">you</text>
+            <circle cx="380" cy="34" r="5" fill="#ffa028"/>
+            <text x="380" y="20" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#ffa028">nvidia</text>
+            <circle cx="380" cy="116" r="5" fill="#ffb000"/>
+            <text x="380" y="140" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#ffb000">openrouter</text>
+            <circle cx="210" cy="75" r="7" fill="none" stroke="#f5f5f4" stroke-width="1.4"/>
+            <circle cx="210" cy="75" r="2.2" fill="#f5f5f4"/>
           </svg>
           <h2 class="display">Where to route this?</h2>
           <p>Pick a provider in Settings, drop in a key, and send. Every message travels straight through your own <code class="mono" style="color:var(--text-mid);">/api/chat</code> function.</p>
@@ -705,7 +756,7 @@
             <button class="chip" data-fill="Suggest a simple dinner recipe.">simple dinner recipe</button>
           </div>
           <div class="suggestions suggestions-secondary">
-            <button class="chip" id="emptyTopicsChip" style="border-color:rgba(16,163,127,.35);color:var(--nvidia);">📚 browse book library</button>
+            <button class="chip" id="emptyTopicsChip" style="border-color:rgba(255,160,40,.35);color:var(--nvidia);">📚 browse book library</button>
           </div>
         </div>
       </div>
@@ -811,30 +862,37 @@
               <div class="pname"><span class="pdot"></span>OpenRouter</div>
               <div class="psub">multi-model gateway</div>
             </button>
+            <button type="button" class="provider-card" data-p="groq">
+              <div class="pname"><span class="pdot"></span>Groq</div>
+              <div class="psub">LPU · ultra-fast</div>
+            </button>
           </div>
         </div>
 
         <div>
           <div class="field-label">Active model</div>
           <div class="model-input-row" style="margin-top:8px;">
-            <input type="text" id="modelInput" class="mono" placeholder="meta/llama-3.1-8b-instruct" spellcheck="false">
+            <input type="text" id="modelInput" class="mono" placeholder="nvidia/nemotron-3.5-lightning-30b-a3b" spellcheck="false">
             <button type="button" class="pin-btn" id="pinModelBtn" title="Save this model">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
             </button>
           </div>
-          <p class="field-desc" id="modelDesc">Smaller/lighter models are more likely to drop spaces or characters on long structured output like tables and figures. For reliable structured output, prefer a larger instruct model — browse the current catalog and exact model IDs at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>.</p>
+          <p class="field-desc" id="modelDesc">Only free models with good token speed are listed. Smaller/lighter models may drop spaces or characters on long structured output like tables — prefer a larger instruct model when that matters. Browse the catalog at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>.</p>
         </div>
 
         <div>
-          <div class="field-label" id="keyLabel">API key for this model</div>
-          <p class="field-desc" style="margin-top:2px;margin-bottom:8px;" id="keyModelHint">Each model can have its own key — useful if you're spreading calls across multiple NVIDIA/OpenRouter accounts. Editing the key here applies only to <code class="mono" style="background:none;padding:0;" id="keyModelName">meta/llama-3.1-8b-instruct</code>.</p>
-          <div class="key-row" style="margin-top:8px;">
-            <input type="password" id="apiKeyInput" class="mono" placeholder="nvapi-••••••••••••••••" spellcheck="false" autocomplete="off">
-            <button type="button" class="visibility" id="toggleKeyVis">show</button>
+          <div class="field-label">API keys <span style="color:var(--text-faint);font-weight:400;">(stored in this browser)</span></div>
+          <p class="field-desc" style="margin-top:2px;margin-bottom:8px;">Add as many keys as you like — e.g. one per NVIDIA/OpenRouter/Groq account to spread rate limits. Click a key to make it active; if it's rejected or rate-limited, Nexus automatically tries your other saved keys (then the other providers). Keys stay only in this browser's localStorage and are relayed through this site's own <code class="mono" style="background:none;padding:0;">/api/chat</code> function. <b>Click "Save changes" below to keep them.</b></p>
+          <div class="key-list" id="keyList" style="margin-top:8px;"></div>
+          <div class="model-input-row" style="margin-top:10px;">
+            <div class="key-row" style="flex:1;position:relative;">
+              <input type="password" id="newKeyInput" class="mono" placeholder="nvapi-••••••••••••••••" spellcheck="false" autocomplete="off" style="width:100%;">
+              <button type="button" class="visibility" id="toggleKeyVis">show</button>
+            </div>
+            <button type="button" class="pin-btn" id="addKeyBtn" title="Add key">+</button>
           </div>
           <div id="keyValidationMsg"></div>
-          <p class="field-desc" id="keyDesc">Required. Get a free key at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a> — open any model card and click "Get API Key." You can also paste a whole Python/LangChain code snippet here (like the one on a model's page) and it'll pull out the key and model automatically. Stored only in this browser's localStorage and relayed through this site's own backend function, never logged or stored anywhere. <b>You must click "Save changes" below for the key to take effect</b> — closing this panel any other way discards unsaved changes.</p>
-          <p class="field-desc" id="keyFallbackNote" style="display:none;"></p>
+          <p class="field-desc">Get a free key at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>, <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>, or <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Pasting a whole Python/LangChain code snippet works too — it'll pull out the key and model automatically.</p>
         </div>
 
         <div>
@@ -872,11 +930,11 @@
           <p class="field-desc">Nexus is dark-first. Both options keep contrast accessible.</p>
           <div class="theme-grid" style="margin-top:10px;">
             <div class="theme-swatch active" data-theme="ink" id="themeInk">
-              <div class="swatch-bar"><div class="swatch-dot" style="background:#0d0d0d;border:1px solid #2a2a2a;"></div><div class="swatch-dot" style="background:#10a37f;"></div><div class="swatch-dot" style="background:#ab68ff;"></div></div>
+              <div class="swatch-bar"><div class="swatch-dot" style="background:#0d0d0d;border:1px solid #26262b;"></div><div class="swatch-dot" style="background:#ffa028;"></div><div class="swatch-dot" style="background:#ffb000;"></div></div>
               <div class="tname">Ink (default)</div>
             </div>
             <div class="theme-swatch" data-theme="graphite" id="themeGraphite">
-              <div class="swatch-bar"><div class="swatch-dot" style="background:#131313;border:1px solid #2f2f2f;"></div><div class="swatch-dot" style="background:#10a37f;"></div><div class="swatch-dot" style="background:#ab68ff;"></div></div>
+              <div class="swatch-bar"><div class="swatch-dot" style="background:#131313;border:1px solid #2f2f2f;"></div><div class="swatch-dot" style="background:#ffa028;"></div><div class="swatch-dot" style="background:#ffb000;"></div></div>
               <div class="tname">Graphite</div>
             </div>
           </div>
@@ -1005,12 +1063,25 @@
     set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
   };
 
-  const DEFAULT_MODELS = { nvidia: 'meta/llama-3.1-8b-instruct', openrouter: 'openrouter/auto' };
-  const HEADER_NAMES = { nvidia: 'X-NVIDIA-Key', openrouter: 'X-OpenRouter-Key' };
-  const SAVED_MODEL_SEEDS = {
-    nvidia: ['meta/llama-3.1-8b-instruct','meta/llama-3.3-70b-instruct','qwen/qwen3-next-80b-a3b-instruct','nvidia/nemotron-3-super-120b-a17b-instruct','nvidia/nemotron-3-ultra-550b-a17b-instruct'],
-    openrouter: ['openrouter/auto','anthropic/claude-3.5-sonnet','openai/gpt-4o-mini']
+  // Free models with good token speed only (verified free endpoints, Sep 2026).
+  const PROVIDERS = ['nvidia', 'openrouter', 'groq'];
+  const DEFAULT_MODELS = {
+    nvidia: 'nvidia/nemotron-3.5-lightning-30b-a3b',
+    openrouter: 'openrouter/free',
+    groq: 'openai/gpt-oss-20b'
   };
+  const HEADER_NAMES = { nvidia: 'X-NVIDIA-Key', openrouter: 'X-OpenRouter-Key', groq: 'X-Groq-Key' };
+  const PROVIDER_BADGE = { nvidia: 'NVIDIA NIM', openrouter: 'OpenRouter', groq: 'Groq' };
+  const PROVIDER_KEY_PLACEHOLDER = { nvidia: 'nvapi-••••••••••••••••', openrouter: 'sk-or-••••••••••••••••', groq: 'gsk_••••••••••••••••' };
+  const KEY_URL = { nvidia: 'https://build.nvidia.com', openrouter: 'https://openrouter.ai/keys', groq: 'https://console.groq.com/keys' };
+  const MODEL_URL = { nvidia: 'https://build.nvidia.com', openrouter: 'https://openrouter.ai/models', groq: 'https://console.groq.com/docs/models' };
+  const SAVED_MODEL_SEEDS = {
+    nvidia: ['nvidia/nemotron-3.5-lightning-30b-a3b','deepseek-ai/deepseek-v4-flash-0731','nvidia/nemotron-3-nano-30b-a3b','qwen/qwen3-next-80b-a3b-instruct','meta/muse-glimmer-30b'],
+    openrouter: ['openrouter/free','liquid/lfm-2.5-2.6b:free','meta-llama/llama-3.3-70b-instruct:free','deepseek/deepseek-v3:free','google/gemma-3-12b-it:free','poolside/laguna-s-2.1:free'],
+    groq: ['openai/gpt-oss-20b','llama-3.1-8b-instant','openai/gpt-oss-120b','llama-3.3-70b-versatile','qwen/qwen3.6-27b','groq/compound-mini']
+  };
+  // Paid/auto models from older builds — stripped on load so only free ones remain.
+  const LEGACY_PAID_MODELS = new Set(['openrouter/auto','anthropic/claude-3.5-sonnet','openai/gpt-4o-mini']);
 
   let conversations = LS.get('nexus_conversations', []); // [{id,title,provider,model,messages:[],updatedAt}]
   // migrate older saved chats that predate the side-chat feature
@@ -1028,8 +1099,10 @@
   function saveCustomBooks(){ LS.set('nexus_custom_books', customBooks); }
   let draft = { // unsaved settings-modal state, applied to session config on Save
     provider: LS.get('nexus_provider', 'nvidia'),
-    keys: LS.get('nexus_keys', {}),              // legacy: one shared key per provider, kept as a fallback for models without their own key
-    modelKeys: LS.get('nexus_model_keys', {}),    // { nvidia: { 'meta/llama-3.1-8b-instruct': 'nvapi-...', ... }, openrouter: {...} } — one key per model
+    keys: LS.get('nexus_keys', {}),              // legacy: one shared key per provider (migrated into keyList below)
+    modelKeys: LS.get('nexus_model_keys', {}),    // legacy per-model keys (migrated into keyList below)
+    keyList: LS.get('nexus_key_list', {}),        // { nvidia: ['nvapi-...', ...], openrouter: ['sk-or-...', ...] } — multiple keys, this browser only
+    activeKeyIdx: LS.get('nexus_active_key_idx', {}), // { nvidia: 0, openrouter: 0 } — which key in keyList is currently used
     models: LS.get('nexus_models', SAVED_MODEL_SEEDS),
     activeModel: LS.get('nexus_active_model', {}),
     system: LS.get('nexus_system', ''),
@@ -1039,58 +1112,68 @@
     pulse: LS.get('nexus_pulse', true)
   };
   // Ensure both providers have a modelKeys bucket, even on a first run.
-  if (!draft.modelKeys.nvidia) draft.modelKeys.nvidia = {};
-  if (!draft.modelKeys.openrouter) draft.modelKeys.openrouter = {};
+    if (!draft.modelKeys.nvidia) draft.modelKeys.nvidia = {};
+    if (!draft.modelKeys.openrouter) draft.modelKeys.openrouter = {};
+    if (!draft.modelKeys.groq) draft.modelKeys.groq = {};
 
-  // Resolves the API key that should actually be used for a given provider+model. Priority:
-  // 1) a key from the repo's keys.json (see loadRemoteKeys below) — the same across every device
-  //    since it's just a fetched file, not per-browser localStorage
-  // 2) a key saved specifically for this model in this browser's Settings
-  // 3) the older provider-wide shared key, as a last-resort fallback
+  // ---- One-time migrations: fold legacy shared/per-model keys into the multi-key list,
+  // and prune paid models so only free ones remain in the saved model list.
+  function migrateKeyStorage(){
+    if (!draft.keyList || typeof draft.keyList !== 'object') draft.keyList = {};
+    if (!draft.activeKeyIdx || typeof draft.activeKeyIdx !== 'object') draft.activeKeyIdx = {};
+    PROVIDERS.forEach(p => {
+      if (!Array.isArray(draft.keyList[p])) draft.keyList[p] = [];
+      if (typeof draft.activeKeyIdx[p] !== 'number') draft.activeKeyIdx[p] = 0;
+      const add = k => { k = String(k || '').trim(); if (k && !draft.keyList[p].includes(k)) draft.keyList[p].push(k); };
+      add(draft.keys[p]);
+      Object.values(draft.modelKeys[p] || {}).forEach(add);
+      if (draft.activeKeyIdx[p] < 0 || draft.activeKeyIdx[p] >= draft.keyList[p].length) draft.activeKeyIdx[p] = 0;
+      // Fold complete — clear the legacy single-key stores so a key deleted from the list
+      // can't be re-seeded from them on the next load once these changes are saved.
+      draft.keys[p] = '';
+      draft.modelKeys[p] = {};
+    });
+  }
+  function migrateModelLists(){
+    PROVIDERS.forEach(p => {
+      if (!Array.isArray(draft.models[p])) draft.models[p] = [];
+      const kept = draft.models[p].filter(m => m && !LEGACY_PAID_MODELS.has(m));
+      draft.models[p] = [...new Set([...SAVED_MODEL_SEEDS[p], ...kept])];
+      if (!draft.activeModel[p] || LEGACY_PAID_MODELS.has(draft.activeModel[p])) {
+        draft.activeModel[p] = DEFAULT_MODELS[p];
+      }
+    });
+  }
+  migrateKeyStorage();
+  migrateModelLists();
+
+  // Resolves the API key for a given provider+model. Priority:
+  // 1) the active key from this browser's multi-key list (Settings → API keys)
+  // 2) a legacy per-model key still saved from an older build
+  // 3) the legacy provider-wide shared key, as a last resort
+  // Keys live only in this browser's localStorage — never in the repo or on a server.
   function resolveApiKey(cfg, provider, model){
-    const entry = remoteKeys && remoteKeys.list && remoteKeys.list.find(e => e.provider === provider && e.model === model);
-    if (entry && entry.key && String(entry.key).trim()) return String(entry.key).trim();
-    const remoteDefault = remoteKeys && remoteKeys.list && remoteKeys.list.find(e => e.provider === provider && e.default);
-    if (remoteDefault && remoteDefault.key && String(remoteDefault.key).trim()) return String(remoteDefault.key).trim();
+    const list = (cfg.keyList && cfg.keyList[provider]) || [];
+    const idx = (cfg.activeKeyIdx && cfg.activeKeyIdx[provider]) || 0;
+    const active = list[idx] || list[0];
+    if (active && String(active).trim()) return String(active).trim();
     const perModel = cfg.modelKeys && cfg.modelKeys[provider] && cfg.modelKeys[provider][model];
-    if (perModel && perModel.trim()) return perModel.trim();
-    return (cfg.keys[provider] || '').trim();
+    if (perModel && String(perModel).trim()) return String(perModel).trim();
+    return ((cfg.keys && cfg.keys[provider]) || '').trim();
   }
 
-  // ---- Remote keys.json: keeps API keys + their attached model in the repo (e.g.
-  // /keys/keys.json, served as a plain static file by Cloudflare Pages) so they're available
-  // from any device/browser without retyping them into Settings. Fetched once at load and
-  // cached; call loadRemoteKeys(true) to force a re-fetch (e.g. right after editing the file).
-  //
-  // Expected shape:
-  // {
-  //   "list": [
-  //     { "provider": "nvidia", "model": "meta/llama-3.1-8b-instruct", "key": "nvapi-...", "default": true },
-  //     { "provider": "nvidia", "model": "nvidia/nemotron-4-340b-instruct", "key": "nvapi-..." },
-  //     { "provider": "openrouter", "model": "anthropic/claude-3.5-sonnet", "key": "sk-or-...", "default": true }
-  //   ]
-  // }
-  // Each entry pairs one key with the one model it's for. "default" (optional, one per provider)
-  // is used as a fallback for any model in that provider that isn't listed explicitly, and also
-  // picks which model becomes active on load (see applyRemoteActiveModel below).
-  const REMOTE_KEYS_URL = '/keys/keys.json';
-  let remoteKeys = null;
-  let remoteKeysLoadError = null;
-  async function loadRemoteKeys(force){
-    if (remoteKeys && !force) return remoteKeys;
-    remoteKeysLoadError = null;
-    try {
-      const res = await fetch(REMOTE_KEYS_URL, { cache: 'no-store' });
-      if (!res.ok) throw new Error('keys.json responded with ' + res.status);
-      const data = await res.json();
-      if (!data || typeof data !== 'object' || !Array.isArray(data.list)) throw new Error('keys.json must be a JSON object with a "list" array');
-      remoteKeys = data;
-      applyRemoteActiveModel();
-    } catch (err) {
-      remoteKeysLoadError = err.message || String(err);
-      remoteKeys = {}; // fail closed to "no remote keys" — falls back to Settings-saved keys, nothing breaks
-    }
-    return remoteKeys;
+  // All other keys saved for this provider (besides the one already being used) — tried
+  // automatically when the active key is rejected or rate-limited (see postChatWithFallback).
+  function backupKeysFor(provider, excludeKey){
+    const list = (applied.keyList && applied.keyList[provider]) || [];
+    const activeIdx = (applied.activeKeyIdx && applied.activeKeyIdx[provider]) || 0;
+    const out = [];
+    list.forEach((k, i) => {
+      k = String(k || '').trim();
+      if (k && k !== excludeKey) out.push({ key: k, idx: i });
+    });
+    out.sort((a, b) => Math.abs(a.idx - activeIdx) - Math.abs(b.idx - activeIdx));
+    return out;
   }
 
   // ---- Resilient /api/chat caller: client-side timeout, cross-provider
@@ -1099,8 +1182,11 @@
   // Cloudflare 524), so without this the person just sees "error code: 524"
   // with nothing to act on. Every chat feature below goes through here.
   const CHAT_REQUEST_TIMEOUT_MS = 75000; // under Cloudflare's ~100s edge timeout, so we report first
-  function otherProvider(p){ return p === 'nvidia' ? 'openrouter' : 'nvidia'; }
-  function providerDisplayName(p){ return p === 'nvidia' ? 'NVIDIA' : 'OpenRouter'; }
+  // Fallback order when the primary provider fails: the other providers, each tried only if
+  // it has a key saved. Keeps multi-provider (NVIDIA + OpenRouter + Groq) failover generic.
+  function otherProviders(p){ return PROVIDERS.filter(x => x !== p); }
+  function otherProvider(p){ return otherProviders(p)[0]; } // first alternate (kept for simple call sites)
+  function providerDisplayName(p){ return PROVIDER_BADGE[p] || p; }
 
   // Maps an HTTP status + upstream message to something the person can act
   // on (which key to check, where to switch provider). Falls back to the
@@ -1110,8 +1196,9 @@
     const m = String(providerMsg || '').trim();
     if (timedOut) return 'The ' + pname + ' request timed out after ' + Math.round((timeoutMs || CHAT_REQUEST_TIMEOUT_MS) / 1000) + 's \u2014 the provider is slow or not responding. Tap Retry, or switch provider in Menu \u2192 Settings.';
     if (status === 400 && /missing api key/i.test(m)) return 'No API key set for ' + pname + '. Open Menu \u2192 Settings, pick ' + pname + ' and paste a key (or set it once as an environment variable on the hosting deployment).';
+    if (status === 400 && /model not found|does not exist|unknown model|invalid model/i.test(m)) return 'That model ID is not available on ' + pname + '. Open Menu \u2192 Settings and pick a model from ' + pname + '\'s free list.';
     if (status === 401 || status === 403 || /unauthorized|invalid.*key|invalid api key|revoked|bad key/i.test(m)) return 'The ' + pname + ' key was rejected (invalid, revoked or out of quota). Paste a fresh key in Menu \u2192 Settings.';
-    if (status === 402 || status === 429 || /rate.?limit|quota|out of credit|insufficient|credit/i.test(m)) return pname + ' rate-limited this key (too many requests or out of credits). Wait a minute and Retry, or switch provider in Menu \u2192 Settings.';
+    if (status === 402 || status === 429 || /rate.?limit|quota|out of credit|insufficient|credit/i.test(m)) return pname + ' rate-limited this key (too many requests or out of credits). Wait a minute and Retry, switch key/provider in Menu \u2192 Settings.';
     if (status === 410 || /end of life|no longer available|model not found|unknown model/i.test(m)) return 'That ' + pname + ' model was retired by the provider. Pick another model in Menu \u2192 Settings.';
     if (status === 524) return pname + ' timed out at the network edge. Tap Retry, or switch provider in Menu \u2192 Settings.';
     if (status === 502 || status === 500 || /failed to decode json body/i.test(m)) return pname + ' returned an unreadable response \u2014 the provider endpoint or this key\u2019s access looks broken. Check the key in Menu \u2192 Settings, or switch provider.';
@@ -1149,25 +1236,46 @@
     }
   }
 
-  // postChatOnce + one automatic retry on the other provider when it has a
-  // key. Resolves { data, provider, model, fallbackFrom? }. When there is
-  // nowhere to fall back to (or the fallback also fails), the primary error
-  // is thrown — it is the actionable one.
+  // postChatOnce + retries: first any backup keys saved for the same provider (when the
+  // active key is rejected/rate-limited), then automatic failover across the other
+  // providers that have a key. Resolves { data, provider, model, fallbackFrom? }. When there is
+  // nowhere left to fall back to, the primary error is thrown — it is the actionable one.
   async function postChatWithFallback(provider, model, apiKey, payload, onFallback){
+    let firstErr;
     try {
       return { data: await postChatOnce(provider, model, apiKey, payload), provider, model };
-    } catch (firstErr) {
-      const other = otherProvider(provider);
+    } catch (err) {
+      firstErr = err;
+    }
+    // 401/403 = bad key, 429 = rate limit — both are worth trying another local key for.
+    if (firstErr && (firstErr.status === 401 || firstErr.status === 403 || firstErr.status === 429)) {
+      const backups = backupKeysFor(provider, apiKey);
+      for (const b of backups) {
+        try {
+          const data = await postChatOnce(provider, model, b.key, payload);
+          // This backup key worked — make it the active one so future calls use it directly.
+          if (!applied.activeKeyIdx) applied.activeKeyIdx = { nvidia: 0, openrouter: 0, groq: 0 };
+          applied.activeKeyIdx[provider] = b.idx;
+          persistAll();
+          return { data, provider, model, rotatedKey: true };
+        } catch (err2) {
+          if (!err2 || (err2.status !== 401 && err2.status !== 403 && err2.status !== 429)) break;
+          firstErr = err2;
+        }
+      }
+    }
+    for (const other of otherProviders(provider)) {
       const otherModel = (applied.activeModel && applied.activeModel[other]) || DEFAULT_MODELS[other];
       const otherKey = resolveApiKey(applied, other, otherModel);
-      if (!otherKey) throw firstErr;
+      if (!otherKey) continue;
       if (typeof onFallback === 'function') { try { onFallback(provider, other); } catch {} }
       try {
         return { data: await postChatOnce(other, otherModel, otherKey, payload), provider: other, model: otherModel, fallbackFrom: provider };
       } catch {
-        throw firstErr;
+        // keep trying remaining providers; primary error stays the actionable one
       }
     }
+    throw firstErr;
   }
 
   // live/applied config == draft until modal is opened, edited, then either saved or cancelled
@@ -1180,6 +1288,8 @@
     LS.set('nexus_provider', applied.provider);
     LS.set('nexus_keys', applied.keys);
     LS.set('nexus_model_keys', applied.modelKeys);
+    LS.set('nexus_key_list', applied.keyList);
+    LS.set('nexus_active_key_idx', applied.activeKeyIdx);
     LS.set('nexus_models', applied.models);
     LS.set('nexus_active_model', applied.activeModel);
     LS.set('nexus_system', applied.system);
@@ -1189,28 +1299,6 @@
     LS.set('nexus_pulse', applied.pulse);
   }
 
-  // Applies the "default" model+provider from keys.json (if present) as the active model/provider,
-  // and makes sure it's in the saved-models list so it shows up as a normal chip. This runs
-  // automatically right after keys.json loads, so opening the app on any device just works with
-  // whatever's set as default in the file — nothing to configure locally.
-  function applyRemoteActiveModel(){
-    if (!remoteKeys || !Array.isArray(remoteKeys.list)) return;
-    remoteKeys.list.forEach(entry => {
-      if (!entry.provider || !entry.model) return;
-      if (!applied.models[entry.provider]) applied.models[entry.provider] = [];
-      if (!applied.models[entry.provider].includes(entry.model)) applied.models[entry.provider].unshift(entry.model);
-      if (!draft.models[entry.provider]) draft.models[entry.provider] = [];
-      if (!draft.models[entry.provider].includes(entry.model)) draft.models[entry.provider].unshift(entry.model);
-      if (entry.default) {
-        applied.activeModel[entry.provider] = entry.model;
-        draft.activeModel[entry.provider] = entry.model;
-      }
-    });
-    persistAll();
-    if (typeof syncTopbar === 'function') syncTopbar();
-  }
-
-  const $ = id => document.getElementById(id);
   const els = {
     shell: $('shell'), menuBtn: $('menuBtn'), menuDropdown: $('menuDropdown'),
     newChatBtn: $('newChatBtn'), searchInput: $('searchInput'), convoList: $('convoList'),
@@ -1238,9 +1326,9 @@
     toast: $('toast'),
     modalOverlay: $('modalOverlay'), modalClose: $('modalClose'), modalCancel: $('modalCancel'), modalSave: $('modalSave'),
     tabs: document.querySelectorAll('.modal-tab'), panes: document.querySelectorAll('.modal-pane'),
-    providerToggle: $('providerToggle'), keyLabel: $('keyLabel'), keyDesc: $('keyDesc'),
-    apiKeyInput: $('apiKeyInput'), toggleKeyVis: $('toggleKeyVis'), keyValidationMsg: $('keyValidationMsg'),
-    keyModelHint: $('keyModelHint'), keyModelName: $('keyModelName'), keyFallbackNote: $('keyFallbackNote'),
+    providerToggle: $('providerToggle'),
+    keyList: $('keyList'), newKeyInput: $('newKeyInput'), addKeyBtn: $('addKeyBtn'),
+    keyValidationMsg: $('keyValidationMsg'), toggleKeyVis: $('toggleKeyVis'),
     modelInput: $('modelInput'), modelDesc: $('modelDesc'), pinModelBtn: $('pinModelBtn'), modelChips: $('modelChips'),
     fetchModelsBtn: $('fetchModelsBtn'), fetchModelsStatus: $('fetchModelsStatus'),
     systemPrompt: $('systemPrompt'), promptChips: $('promptChips'), newPromptInput: $('newPromptInput'), addPromptBtn: $('addPromptBtn'),
@@ -1428,24 +1516,24 @@
           suppressErrorRendering: true,
           themeVariables: {
             darkMode: true,
-            background: '#171717',
-            primaryColor: '#242424',
-            primaryTextColor: '#ececec',
+            background: '#0c0c0e',
+            primaryColor: '#121214',
+            primaryTextColor: '#f5f5f4',
             primaryBorderColor: '#4a8fe0',
-            secondaryColor: '#242424',
-            secondaryTextColor: '#ececec',
+            secondaryColor: '#121214',
+            secondaryTextColor: '#f5f5f4',
             secondaryBorderColor: '#e05c5c',
-            tertiaryColor: '#242424',
-            tertiaryTextColor: '#ececec',
+            tertiaryColor: '#121214',
+            tertiaryTextColor: '#f5f5f4',
             tertiaryBorderColor: '#3ecf8e',
-            lineColor: '#8a8a8a',
-            textColor: '#ececec',
-            mainBkg: '#242424',
-            nodeTextColor: '#ececec',
-            clusterBkg: '#1e1e1e',
-            clusterBorder: '#4a4a4a',
-            edgeLabelBackground: '#171717',
-            fontFamily: 'Inter, sans-serif',
+            lineColor: '#a1a1aa',
+            textColor: '#f5f5f4',
+            mainBkg: '#121214',
+            nodeTextColor: '#f5f5f4',
+            clusterBkg: '#0c0c0e',
+            clusterBorder: '#26262b',
+            edgeLabelBackground: '#0c0c0e',
+            fontFamily: 'IBM Plex Mono, monospace',
             fontSize: '14px'
           },
           flowchart: { htmlLabels: true, nodeSpacing: 45, rankSpacing: 55, padding: 12, useMaxWidth: true },
@@ -1958,7 +2046,7 @@
     if (opts.msgId) wrap.dataset.msgId = opts.msgId;
     const avatar = document.createElement('div');
     avatar.className = 'avatar';
-    avatar.textContent = role === 'user' ? 'YOU' : (opts.provider === 'openrouter' ? 'OR' : 'NV');
+    avatar.textContent = role === 'user' ? 'YOU' : (opts.provider === 'openrouter' ? 'OR' : (opts.provider === 'groq' ? 'GQ' : 'NV'));
     const bwrap = document.createElement('div');
     bwrap.className = 'bubble-wrap';
     if (role === 'user') {
@@ -2285,7 +2373,6 @@
   async function runSideRequest(convo, text, pendingEl, attempt){
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
-    await loadRemoteKeys(); // make sure repo-provided keys are loaded before resolving which key to use
     const apiKey = resolveApiKey(applied, provider, model);
 
     // Side chat is intentionally a stateless, single-turn scratch tool: it does not ground itself in
@@ -2350,14 +2437,19 @@
     const p = applied.provider;
     if (els.providerBadge) {
       els.providerBadge.className = 'route-chip ' + p;
-      els.providerBadge.innerHTML = '<span class="rdot"></span>' + (p === 'nvidia' ? 'NVIDIA NIM' : 'OpenRouter');
+      els.providerBadge.innerHTML = '<span class="rdot"></span>' + (PROVIDER_BADGE[p] || p);
     }
     const model = applied.activeModel[p] || DEFAULT_MODELS[p];
     if (els.topModelName) els.topModelName.textContent = model;
     els.sendBtn.dataset.provider = p;
     els.newChatBtn.dataset.provider = p;
+    // Pulse lines: top = NVIDIA amber, bottom = OpenRouter yellow; Groq sits in the middle.
     if (els.pulseTop) els.pulseTop.style.opacity = applied.pulse ? (p === 'nvidia' ? '.85' : '.18') : '0';
-    if (els.pulseBottom) els.pulseBottom.style.opacity = applied.pulse ? (p === 'openrouter' ? '.85' : '.18') : '0';
+    if (els.pulseBottom) els.pulseBottom.style.opacity = applied.pulse ? (p === 'nvidia' ? '.85' : (p === 'groq' ? '.5' : '.18')) : '0';
+    if (els.pulseBottom && p === 'groq') els.pulseBottom.setAttribute('stroke', '#ff5ca8');
+    else if (els.pulseBottom) els.pulseBottom.setAttribute('stroke', '#ffb000');
+    if (els.pulseTop && p === 'groq') els.pulseTop.setAttribute('stroke', '#ff5ca8');
+    else if (els.pulseTop) els.pulseTop.setAttribute('stroke', '#ffa028');
   }
 
   /* ---------------- composer ---------------- */
@@ -2468,7 +2560,6 @@
   async function requestAssistantReply(convo, userMsg, pending, emptyRetryAttempt){
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
-    await loadRemoteKeys(); // make sure repo-provided keys are loaded before resolving which key to use
     const apiKey = resolveApiKey(applied, provider, model);
 
     const payloadMessages = [];
@@ -2898,7 +2989,6 @@
   async function generateTopicPrompt(volTitle, modTitle, topic, siblingTopics, isExam){
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
-    await loadRemoteKeys(); // make sure repo-provided keys are loaded before resolving which key to use
     const apiKey = resolveApiKey(applied, provider, model);
     const siblings = (siblingTopics || []).filter(t => t !== topic);
     const userContent = (isExam ? 'Learning Outcome Statement (LOS): "' : 'Topic: "') + topic + '"\nVolume: ' + volTitle + '\nModule: ' + modTitle +
@@ -2931,7 +3021,6 @@
   const BOOK_TOC_MAX_ATTEMPTS = 5;
 
   async function generateBookToc(bookTitle){
-    await loadRemoteKeys();
     const payload = {
       messages: [
         { role: 'system', content: BOOK_TOC_WRITER_SYSTEM },
@@ -2939,9 +3028,8 @@
       ]
     };
     // Candidate order: the person's active provider/model first, then the
-    // other provider's active model, then every repo-provided keys.json
-    // entry (keys.json is curated with healthy defaults first). Deduped and
-    // capped so the worst-case wait stays bounded.
+    // other provider's active model. Deduped and capped so the worst-case
+    // wait stays bounded.
     const seenToc = {};
     const candidates = [];
     function pushTocCandidate(provider, model){
@@ -2956,13 +3044,9 @@
     }
     const primaryProvider = applied.provider;
     pushTocCandidate(primaryProvider, applied.activeModel[primaryProvider] || DEFAULT_MODELS[primaryProvider]);
-    const otherToc = otherProvider(primaryProvider);
-    pushTocCandidate(otherToc, (applied.activeModel && applied.activeModel[otherToc]) || DEFAULT_MODELS[otherToc]);
-    if (remoteKeys && Array.isArray(remoteKeys.list)) {
-      remoteKeys.list.forEach(function (e) {
-        if (e && e.provider && e.model) pushTocCandidate(String(e.provider), String(e.model));
-      });
-    }
+    otherProviders(primaryProvider).forEach(function (p) {
+      pushTocCandidate(p, (applied.activeModel && applied.activeModel[p]) || DEFAULT_MODELS[p]);
+    });
     const attempts = candidates.slice(0, BOOK_TOC_MAX_ATTEMPTS);
     if (!attempts.length) throw new Error('No API key set. Open Menu \u2192 Settings, pick a provider and paste a key.');
     let lastErr = null;
@@ -3455,16 +3539,26 @@
   function detectKeyMismatch(key, provider){
     const k = key.trim();
     if (!k) return null;
-    if (provider === 'nvidia' && /^sk-or-/i.test(k)) return 'This looks like an OpenRouter key, not a NVIDIA NIM key — check the Provider toggle above.';
-    if (provider === 'openrouter' && /^nvapi-/i.test(k)) return 'This looks like a NVIDIA NIM key, not an OpenRouter key — check the Provider toggle above.';
-    if (provider === 'nvidia' && k.length > 0 && !/^nvapi-/i.test(k)) return 'NVIDIA NIM keys usually start with "nvapi-" — double check you copied the right value.';
-    if (provider === 'openrouter' && k.length > 0 && !/^sk-or-/i.test(k)) return 'OpenRouter keys usually start with "sk-or-" — double check you copied the right value.';
+    const looksNvidia = /^nvapi-/i.test(k);
+    const looksOpenRouter = /^sk-or-/i.test(k);
+    const looksGroq = /^gsk_/i.test(k);
+    if (provider === 'nvidia' && looksOpenRouter) return 'This looks like an OpenRouter key, not a NVIDIA NIM key — check the Provider toggle above.';
+    if (provider === 'nvidia' && looksGroq) return 'This looks like a Groq key, not a NVIDIA NIM key — check the Provider toggle above.';
+    if (provider === 'openrouter' && looksNvidia) return 'This looks like a NVIDIA NIM key, not an OpenRouter key — check the Provider toggle above.';
+    if (provider === 'openrouter' && looksGroq) return 'This looks like a Groq key, not an OpenRouter key — check the Provider toggle above.';
+    if (provider === 'groq' && looksNvidia) return 'This looks like a NVIDIA NIM key, not a Groq key — check the Provider toggle above.';
+    if (provider === 'groq' && looksOpenRouter) return 'This looks like an OpenRouter key, not a Groq key — check the Provider toggle above.';
+    if (provider === 'nvidia' && k.length > 0 && !looksNvidia) return 'NVIDIA NIM keys usually start with "nvapi-" — double check you copied the right value.';
+    if (provider === 'openrouter' && k.length > 0 && !looksOpenRouter) return 'OpenRouter keys usually start with "sk-or-" — double check you copied the right value.';
+    if (provider === 'groq' && k.length > 0 && !looksGroq) return 'Groq keys usually start with "gsk_" — double check you copied the right value.';
     return null;
   }
 
   function extractKeyAndModelFromPaste(pasted){
     let key = null, model = null;
-    const keyMatch = pasted.match(/nvapi-[A-Za-z0-9_-]{20,}/) || pasted.match(/sk-or-[A-Za-z0-9_-]{20,}/);
+    const keyMatch = pasted.match(/nvapi-[A-Za-z0-9_-]{20,}/)
+      || pasted.match(/sk-or-[A-Za-z0-9_-]{20,}/)
+      || pasted.match(/gsk_[A-Za-z0-9]{20,}/);
     if (keyMatch) key = keyMatch[0];
     const modelMatch = pasted.match(/model\s*[:=]\s*["']([^"']+)["']/i);
     if (modelMatch) model = modelMatch[1];
@@ -3472,7 +3566,7 @@
   }
 
   function updateKeyValidation(){
-    const val = els.apiKeyInput.value;
+    const val = els.newKeyInput ? els.newKeyInput.value : '';
     const msg = detectKeyMismatch(val, draft.provider);
     if (msg) {
       els.keyValidationMsg.innerHTML = '<div class="inline-msg warn" style="margin-top:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 9V13M12 17H12.01M10.29 3.86L1.82 18A2 2 0 003.54 21H20.46A2 2 0 0022.18 18L13.71 3.86A2 2 0 0010.29 3.86Z" stroke="currentColor" stroke-width="1.7"/></svg><span>' + msg + '</span></div>';
@@ -3481,62 +3575,135 @@
     }
   }
 
-  // The model currently shown in the "Active model" field is the one being configured — the key
-  // field below it always edits *that* model's own key, not one shared key for the whole provider.
-  function currentlyEditedModel(){
-    return els.modelInput.value.trim() || draft.activeModel[draft.provider] || DEFAULT_MODELS[draft.provider];
+  function maskKey(k){
+    k = String(k || '');
+    if (k.length <= 14) return k.slice(0, 6) + '…' + k.slice(-4);
+    return k.slice(0, 7) + '…' + k.slice(-4);
   }
 
-  // Loads whatever key is saved for the given model into the key field, falling back to the
-  // legacy provider-wide key (shown with a note) if this specific model has never been given its
-  // own key yet — so existing single-key setups still work after upgrading to per-model keys.
-  function loadKeyFieldForModel(model){
-    if (!draft.modelKeys[draft.provider]) draft.modelKeys[draft.provider] = {};
-    const perModelKey = draft.modelKeys[draft.provider][model];
-    const legacyKey = draft.keys[draft.provider] || '';
-    els.apiKeyInput.value = perModelKey || '';
-    if (els.keyModelName) els.keyModelName.textContent = model;
-    if (els.keyFallbackNote) {
-      if (!perModelKey && legacyKey) {
-        els.keyFallbackNote.style.display = '';
-        els.keyFallbackNote.innerHTML = 'No key saved for this specific model yet — until you add one, it\'ll use your older shared ' + (draft.provider === 'nvidia' ? 'NVIDIA' : 'OpenRouter') + ' key as a fallback.';
-      } else {
-        els.keyFallbackNote.style.display = 'none';
-      }
+  function ensureKeyBuckets(){
+    if (!draft.keyList || typeof draft.keyList !== 'object') draft.keyList = {};
+    if (!draft.activeKeyIdx || typeof draft.activeKeyIdx !== 'object') draft.activeKeyIdx = {};
+    if (!Array.isArray(draft.keyList[draft.provider])) draft.keyList[draft.provider] = [];
+    if (typeof draft.activeKeyIdx[draft.provider] !== 'number') draft.activeKeyIdx[draft.provider] = 0;
+  }
+
+  function renderKeyList(){
+    ensureKeyBuckets();
+    const wrap = els.keyList;
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    const list = draft.keyList[draft.provider] || [];
+    const activeIdx = draft.activeKeyIdx[draft.provider] || 0;
+    if (!list.length){
+      wrap.innerHTML = '<div class="field-desc" style="padding:4px 0;">No keys yet — paste one below.</div>';
+      return;
     }
-    updateKeyValidation();
+    list.forEach((k, i) => {
+      const row = document.createElement('div');
+      row.className = 'key-list-item' + (i === activeIdx ? ' active' : '');
+      const use = document.createElement('button');
+      use.type = 'button';
+      use.className = 'kl-use';
+      use.title = 'Use this key' + (i === activeIdx ? ' (active)' : '');
+      const dot = document.createElement('span');
+      dot.className = 'kl-dot';
+      const mask = document.createElement('span');
+      mask.className = 'kl-mask mono';
+      mask.textContent = maskKey(k);
+      use.appendChild(dot);
+      use.appendChild(mask);
+      if (i === activeIdx){
+        const badge = document.createElement('span');
+        badge.className = 'kl-badge';
+        badge.textContent = 'active';
+        use.appendChild(badge);
+      }
+      use.addEventListener('click', () => {
+        draft.activeKeyIdx[draft.provider] = i;
+        renderKeyList();
+      });
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'kl-del';
+      del.title = 'Remove key';
+      del.innerHTML = '×';
+      del.addEventListener('click', () => {
+        draft.keyList[draft.provider].splice(i, 1);
+        if (draft.activeKeyIdx[draft.provider] >= draft.keyList[draft.provider].length) {
+          draft.activeKeyIdx[draft.provider] = 0;
+        }
+        renderKeyList();
+      });
+      row.appendChild(use);
+      row.appendChild(del);
+      wrap.appendChild(row);
+    });
   }
 
-  els.apiKeyInput.addEventListener('input', () => {
-    const model = currentlyEditedModel();
-    if (!draft.modelKeys[draft.provider]) draft.modelKeys[draft.provider] = {};
-    draft.modelKeys[draft.provider][model] = els.apiKeyInput.value;
-    if (els.keyFallbackNote) els.keyFallbackNote.style.display = 'none'; // typing anything overrides the fallback note immediately
+  function addKeyFromInput(){
+    ensureKeyBuckets();
+    const raw = (els.newKeyInput.value || '').trim();
+    if (!raw){
+      updateKeyValidation();
+      return;
+    }
+    const { key, model } = extractKeyAndModelFromPaste(raw);
+    const k = (key || raw).trim();
+    const mismatch = detectKeyMismatch(k, draft.provider);
+    if (mismatch){
+      updateKeyValidation();
+      return;
+    }
+    if (draft.keyList[draft.provider].includes(k)){
+      showToast('That key is already in the list');
+      els.newKeyInput.value = '';
+      updateKeyValidation();
+      return;
+    }
+    draft.keyList[draft.provider].push(k);
+    if (draft.keyList[draft.provider].length === 1) draft.activeKeyIdx[draft.provider] = 0;
+    if (model){
+      draft.activeModel[draft.provider] = model;
+      els.modelInput.value = model;
+      renderModelChips();
+    }
+    els.newKeyInput.value = '';
     updateKeyValidation();
+    renderKeyList();
+    showToast('Key added — click Save changes to keep it');
+  }
+
+  els.newKeyInput.addEventListener('input', updateKeyValidation);
+  els.newKeyInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      addKeyFromInput();
+    }
   });
-  els.apiKeyInput.addEventListener('paste', (e) => {
+  els.newKeyInput.addEventListener('paste', (e) => {
     const pasted = (e.clipboardData || window.clipboardData).getData('text');
-    if (pasted.length > 60 && /model|api_key|Authorization/i.test(pasted)) {
+    if (pasted.length > 60 && /model|api_key|Authorization/i.test(pasted)){
       const { key, model } = extractKeyAndModelFromPaste(pasted);
-      if (key) {
+      if (key){
         e.preventDefault();
-        // Model in the snippet wins if present, so the key gets attached to the model it actually
-        // belongs to rather than whatever happened to be in the field before pasting.
-        const targetModel = model || currentlyEditedModel();
-        if (model) { els.modelInput.value = model; draft.activeModel[draft.provider] = model; }
-        els.apiKeyInput.value = key;
-        if (!draft.modelKeys[draft.provider]) draft.modelKeys[draft.provider] = {};
-        draft.modelKeys[draft.provider][targetModel] = key;
-        if (els.keyFallbackNote) els.keyFallbackNote.style.display = 'none';
+        els.newKeyInput.value = key;
+        if (model){
+          draft.activeModel[draft.provider] = model;
+          els.modelInput.value = model;
+          renderModelChips();
+          showToast('Key and model extracted from pasted snippet');
+        } else {
+          showToast('Key extracted from pasted snippet');
+        }
         updateKeyValidation();
-        renderModelChips();
-        showToast('Key' + (model ? ' and model' : '') + ' extracted from pasted snippet');
       }
     }
   });
+  els.addKeyBtn.addEventListener('click', addKeyFromInput);
   els.toggleKeyVis.addEventListener('click', () => {
-    const isPw = els.apiKeyInput.type === 'password';
-    els.apiKeyInput.type = isPw ? 'text' : 'password';
+    const isPw = els.newKeyInput.type === 'password';
+    els.newKeyInput.type = isPw ? 'text' : 'password';
     els.toggleKeyVis.textContent = isPw ? 'hide' : 'show';
   });
 
@@ -3549,7 +3716,6 @@
 
   els.modelInput.addEventListener('input', () => {
     draft.activeModel[draft.provider] = els.modelInput.value;
-    loadKeyFieldForModel(currentlyEditedModel());
   });
   els.pinModelBtn.addEventListener('click', () => {
     const v = els.modelInput.value.trim();
@@ -3600,11 +3766,10 @@
     const list = draft.models[draft.provider] || [];
     list.forEach(m => {
       const chip = document.createElement('div');
-      const hasOwnKey = !!(draft.modelKeys[draft.provider] && draft.modelKeys[draft.provider][m] && draft.modelKeys[draft.provider][m].trim());
       chip.className = 'model-chip' + (m === (draft.activeModel[draft.provider] || DEFAULT_MODELS[draft.provider]) ? ' active' : '');
       const label = document.createElement('span');
-      label.textContent = (hasOwnKey ? '\ud83d\udd11 ' : '') + (m.length > 32 ? m.slice(0, 30) + '…' : m);
-      label.title = m + (hasOwnKey ? ' — has its own saved key' : ' — no key of its own yet, uses the shared/fallback key');
+      label.textContent = m.length > 32 ? m.slice(0, 30) + '…' : m;
+      label.title = m + ' — free model';
       chip.appendChild(label);
       const x = document.createElement('button');
       x.className = 'mx'; x.type = 'button'; x.innerHTML = '×';
@@ -3616,12 +3781,9 @@
       });
       chip.appendChild(x);
       chip.addEventListener('click', () => {
-        // Clicking a chip both makes this the active model to chat with *and* switches the key
-        // field below to that model's own key, so "select a model" and "configure its key" are
-        // the same click instead of two separate steps.
+        // Clicking a chip makes this the active model to chat with.
         draft.activeModel[draft.provider] = m;
         els.modelInput.value = m;
-        loadKeyFieldForModel(m);
         renderModelChips();
       });
       els.modelChips.appendChild(chip);
@@ -3681,14 +3843,20 @@
 
   function populateModal(keepTab){
     [...els.providerToggle.querySelectorAll('.provider-card')].forEach(b => b.classList.toggle('active', b.dataset.p === draft.provider));
-    els.keyLabel.textContent = 'API key for this model';
-    els.apiKeyInput.placeholder = draft.provider === 'nvidia' ? 'nvapi-••••••••••••••••' : 'sk-or-••••••••••••••••';
-    els.apiKeyInput.type = 'password'; els.toggleKeyVis.textContent = 'show';
+    ensureKeyBuckets();
+    els.newKeyInput.placeholder = PROVIDER_KEY_PLACEHOLDER[draft.provider] || 'api key';
+    els.newKeyInput.type = 'password'; els.toggleKeyVis.textContent = 'show';
+    els.newKeyInput.value = '';
+    renderKeyList();
+    updateKeyValidation();
     els.modelInput.value = draft.activeModel[draft.provider] || DEFAULT_MODELS[draft.provider];
-    loadKeyFieldForModel(currentlyEditedModel());
+    const murl = MODEL_URL[draft.provider];
+    const mlabel = draft.provider === 'nvidia' ? 'build.nvidia.com' : (draft.provider === 'groq' ? 'console.groq.com/docs/models' : 'openrouter.ai/models');
     els.modelDesc.innerHTML = draft.provider === 'nvidia'
-      ? 'Smaller/lighter models are more likely to drop spaces or characters on long structured output like tables and figures. For reliable structured output, prefer a larger instruct model — browse the current catalog and exact model IDs at <a href="https://build.nvidia.com" target="_blank" rel="noopener">build.nvidia.com</a>.'
-      : 'Any OpenRouter model slug works, e.g. <code class="mono" style="background:none;padding:0;">anthropic/claude-3.5-sonnet</code>. Browse the full catalog at <a href="https://openrouter.ai/models" target="_blank" rel="noopener">openrouter.ai/models</a>.';
+      ? 'Free NVIDIA NIM endpoints with good token speed. Smaller/lighter models may drop spaces or characters on long structured output like tables — prefer a larger instruct model when that matters. Browse the catalog at <a href="' + murl + '" target="_blank" rel="noopener">' + mlabel + '</a>.'
+      : (draft.provider === 'groq'
+        ? 'Groq free developer-tier models with very high token speed (LPU). IDs are short slugs like <code class="mono" style="background:none;padding:0;">llama-3.1-8b-instant</code>. Browse the catalog at <a href="' + murl + '" target="_blank" rel="noopener">' + mlabel + '</a>.'
+        : 'Only free OpenRouter models (<code class="mono" style="background:none;padding:0;">:free</code> suffix or the free router) are listed. Browse the full catalog at <a href="' + murl + '" target="_blank" rel="noopener">' + mlabel + '</a>.');
     renderModelChips();
     freeModelsFetched = false; // re-fetch free models next time Settings opens
     if (els.fetchModelsStatus) { els.fetchModelsStatus.style.display = 'none'; els.fetchModelsStatus.textContent = ''; }
@@ -3802,7 +3970,6 @@
   syncTopbar();
   syncModesToggle();
   syncDualToggle();
-  loadRemoteKeys(); // fire-and-forget: fills in as soon as it lands, no blocking on first paint
 })();
 </script>
 </body>
