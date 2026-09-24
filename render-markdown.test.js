@@ -19,6 +19,14 @@ const study = new Function(`${studySource}\nreturn { STUDY_MODE_IDS, buildStudyR
 const modesStart = source.indexOf('  const MODE_DEFS = [');
 const modesEnd = source.indexOf('  const MODE_DIRECTIVES', modesStart);
 const modeDefs = new Function(`${source.slice(modesStart, modesEnd)}\nreturn MODE_DEFS;`)();
+const exclusiveStart = source.indexOf('  const MODE_EXCLUSIVE_SIBLINGS');
+const exclusiveEnd = source.indexOf('  let modesDraft', exclusiveStart);
+const modeDirectives = Object.fromEntries(modeDefs.flatMap(group => group.modes.map(mode => [mode.id, mode.directive])));
+const modeHelpers = new Function(
+  'MODE_DEFS',
+  'MODE_DIRECTIVES',
+  `${source.slice(exclusiveStart, exclusiveEnd)}\nreturn { normalizeModeList, toggleModeInList };`
+)(modeDefs, modeDirectives);
 const systemStart = source.indexOf('  function buildSystemMessages(convo){');
 const systemEnd = source.indexOf('  /* ---------------- topbar menu dropdown', systemStart);
 const systemSource = source.slice(systemStart, systemEnd);
@@ -86,6 +94,14 @@ test('adds a study-first protocol to study modes', () => {
     assert.ok(study.STUDY_MODE_IDS.has(id));
     assert.ok(modeMap.has(id));
   }
+});
+
+test('keeps alternative study modes mutually exclusive', () => {
+  const guidedGroup = modeDefs.find(group => group.group === '🧠 Guided Study & Recall');
+  assert.equal(guidedGroup.exclusive, true);
+  assert.deepEqual(modeHelpers.normalizeModeList(['guided-reading', 'flashcards']), ['guided-reading']);
+  assert.deepEqual(modeHelpers.toggleModeInList(['guided-reading'], 'flashcards'), ['flashcards']);
+  assert.deepEqual(modeHelpers.normalizeModeList(['guided-reading', 'cfa-mode']), ['guided-reading', 'cfa-mode']);
 });
 
 test('parses flashcard blocks and ignores incomplete cards', () => {
