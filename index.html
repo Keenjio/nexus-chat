@@ -1309,14 +1309,55 @@
 
   /* ---------------- markdown + latex rendering ---------------- */
   function escapeHtml(str){ return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function isEscapedAt(text, index){
+    let count = 0;
+    for (let i = index - 1; i >= 0 && text[i] === '\\'; i--) count++;
+    return count % 2 === 1;
+  }
+  function protectCurrencyDollars(text){
+    return text.replace(/(\\*)\$(?=\d)/g, (m, slashes) => {
+      const kept = slashes.length % 2 ? slashes.slice(0, -1) : slashes;
+      return kept + '\u0000DLR\u0000';
+    });
+  }
+  function escapeTexPercent(text){
+    return text.replace(/%/g, (m, offset, full) => isEscapedAt(full, offset) ? m : '\\%');
+  }
+  function normalizeMarkdownBlocks(text){
+    const tagPattern = /<(\/?)(h[1-6]|ul|ol|pre|div|hr|table)\b[^>]*>/gi;
+    const stack = [];
+    let out = '';
+    let cursor = 0;
+    let match;
+    const addBreak = () => {
+      if (out && !/\n{2,}$/.test(out)) out += '\n\n';
+    };
+    while ((match = tagPattern.exec(text))) {
+      out += text.slice(cursor, match.index);
+      const closing = match[1] === '/';
+      const tag = match[2].toLowerCase();
+      const voidTag = tag === 'hr' && !closing;
+      if (!closing && !voidTag) {
+        if (!stack.length) addBreak();
+        out += match[0];
+        stack.push(tag);
+      } else if (closing) {
+        out += match[0];
+        const index = stack.lastIndexOf(tag);
+        if (index >= 0) stack.splice(index, 1);
+        if (!stack.length) addBreak();
+      } else {
+        if (!stack.length) addBreak();
+        out += match[0];
+        if (!stack.length) addBreak();
+      }
+      cursor = tagPattern.lastIndex;
+    }
+    return out + text.slice(cursor);
+  }
 
   function renderMarkdown(src){
     const stash = [];
-    let s = src.replace(/\\\[([\s\S]+?)\\\]/g, (m, tex) => { stash.push({disp:true, tex}); return '\u0000LX' + (stash.length-1) + '\u0000'; });
-    s = s.replace(/\\\(([\s\S]+?)\\\)/g, (m, tex) => { stash.push({disp:false, tex}); return '\u0000LX' + (stash.length-1) + '\u0000'; });
-    s = s.replace(/\$\$([\s\S]+?)\$\$/g, (m, tex) => { stash.push({disp:true, tex}); return '\u0000LX' + (stash.length-1) + '\u0000'; });
-    s = s.replace(/\$([^\$\n]+?)\$/g, (m, tex) => { stash.push({disp:false, tex}); return '\u0000LX' + (stash.length-1) + '\u0000'; });
-
     const codeStash = [];
     const mermaidStash = [];
     const svgStash = [];
@@ -1324,11 +1365,28 @@
     // rendered as an actual diagram (via mermaid.js, loaded lazily — see ensureMermaid) instead of
     // as a plain <pre><code> block. Detection is based on the ```mermaid language tag, the same
     // fence syntax models are already heavily trained on, rather than a bespoke [[TAG]] format.
-    s = s.replace(/```mermaid\n?([\s\S]*?)```/g, (m, code) => { mermaidStash.push(code.trim()); return '\u0000MM' + (mermaidStash.length-1) + '\u0000'; });
+    let s = src.replace(/\r\n?/g, '\n').replace(/```mermaid\n?([\s\S]*?)```/g, (m, code) => { mermaidStash.push(code.trim()); return '\u0000MM' + (mermaidStash.length-1) + '\u0000'; });
     // ```svg fences render as an inline, sanitized SVG figure — used for diagram types Mermaid can't
     // draw well (e.g. smooth supply/demand curves), see Concept Map Mode's directive.
     s = s.replace(/```svg\n?([\s\S]*?)```/g, (m, code) => { svgStash.push(code.trim()); return '\u0000SV' + (svgStash.length-1) + '\u0000'; });
     s = s.replace(/```([a-zA-Z0-9]*)\n?([\s\S]*?)```/g, (m, lang, code) => { codeStash.push(code.replace(/\n$/, '')); return '\u0000CB' + (codeStash.length-1) + '\u0000'; });
+
+    s = protectCurrencyDollars(s);
+
+    const stashMath = (m, tex, disp) => {
+      stash.push({disp, tex: escapeTexPercent(tex)});
+      return '\u0000LX' + (stash.length-1) + '\u0000';
+    };
+    s = s.replace(/\\\[([\s\S]+?)\\\]/g, (m, tex) => stashMath(m, tex, true));
+    s = s.replace(/\\\(([\s\S]+?)\\\)/g, (m, tex) => stashMath(m, tex, false));
+    s = s.replace(/\$\$([\s\S]+?)\$\$/g, (m, tex, offset, full) => {
+      if (isEscapedAt(full, offset) || isEscapedAt(full, offset + m.length - 1)) return m;
+      return stashMath(m, tex, true);
+    });
+    s = s.replace(/\$(?!\s)([^\$\n]+?)\$(?!\d)/g, (m, tex, offset, full) => {
+      if (isEscapedAt(full, offset) || isEscapedAt(full, offset + m.length - 1) || /\s$/.test(tex)) return m;
+      return stashMath(m, tex, false);
+    });
 
     s = escapeHtml(s);
 
@@ -1343,7 +1401,7 @@
     // this one specific, harmless tag — nothing else escaped above is un-escaped.
     s = s.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
 
-    s = s.replace(/((?:^\|.*\|[ \t]*\n)+)/gm, block => {
+    s = s.replace(/((?:^\|.*\|[ \t]*(?:\n|$))+)/gm, block => {
       const lines = block.trim().split('\n').filter(Boolean);
       if (lines.length < 2 || !/^\s*\|?[\s:|-]+\|?\s*$/.test(lines[1])) return block;
       const parseRow = l => l.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
@@ -1357,7 +1415,7 @@
 
     s = s.replace(/^### (.*)$/gm, '<h3>$1</h3>').replace(/^## (.*)$/gm, '<h2>$1</h2>').replace(/^# (.*)$/gm, '<h1>$1</h1>');
     s = s.replace(/^---+$/gm, '<hr>');
-    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
 
     s = s.replace(/(^|\n)((?:[ \t]*[-*] .*(?:\n|$))+)/g, (m, pre, block) => {
@@ -1369,17 +1427,25 @@
       return pre + '<ol>' + items.map(i=>'<li>'+i+'</li>').join('') + '</ol>\n';
     });
 
+    s = normalizeMarkdownBlocks(s);
+    s = s.replace(/\*([^*\n]+?)\*/g, (m, tex, offset, full) => {
+      if (isEscapedAt(full, offset) || full[offset - 1] === '*' || full[offset + m.length] === '*') return m;
+      return '<em>' + tex + '</em>';
+    });
+
     s = s.split(/\n{2,}/).map(chunk => {
       const t = chunk.trim();
       if (!t) return '';
-      if (/^<(h1|h2|h3|ul|ol|pre|div|hr|table)/.test(t)) return t;
+      if (/^<(?:h[1-6]|ul|ol|pre|div|hr|table)\b/.test(t)) return t;
       return '<p>' + t.replace(/\n/g, '<br>') + '</p>';
     }).join('\n');
 
     s = s.replace(/\u0000LX(\d+)\u0000/g, (m, i) => {
       const item = stash[i];
-      return item.disp ? ('$$' + item.tex + '$$') : ('$' + item.tex + '$');
+      const tex = escapeHtml(item.tex);
+      return item.disp ? ('\\[' + tex + '\\]') : ('\\(' + tex + '\\)');
     });
+    s = s.replace(/\u0000DLR\u0000/g, () => '$');
 
     return s;
   }
@@ -1389,11 +1455,10 @@
       try {
         renderMathInElement(el, {
           delimiters: [
-            {left:'$$', right:'$$', display:true},
-            {left:'$', right:'$', display:false},
             {left:'\\[', right:'\\]', display:true},
             {left:'\\(', right:'\\)', display:false}
           ],
+          ignoredTags: ['script','noscript','style','textarea','pre','code','option','select'],
           throwOnError:false
         });
       } catch {}
