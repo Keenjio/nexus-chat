@@ -13,19 +13,19 @@ const katexStart = source.indexOf('  function renderKatexIn');
 const katexEnd = source.indexOf('  // ---- Mermaid diagrams', katexStart);
 const katexSource = source.slice(katexStart, katexEnd);
 const studyStart = source.indexOf('  const STUDY_MODE_IDS');
-const studyEnd = source.indexOf('  // Maps every mode id', studyStart);
+const studyEnd = source.indexOf('  function normalizeModeList', studyStart);
 const studySource = source.slice(studyStart, studyEnd);
 const study = new Function(`${studySource}\nreturn { STUDY_MODE_IDS, buildStudyReadingDirective };`)();
 const modesStart = source.indexOf('  const MODE_DEFS = [');
 const modesEnd = source.indexOf('  const MODE_DIRECTIVES', modesStart);
 const modeDefs = new Function(`${source.slice(modesStart, modesEnd)}\nreturn MODE_DEFS;`)();
-const exclusiveStart = source.indexOf('  const MODE_EXCLUSIVE_SIBLINGS');
-const exclusiveEnd = source.indexOf('  let modesDraft', exclusiveStart);
+const modeHelpersStart = source.indexOf('  function normalizeModeList');
+const modeHelpersEnd = source.indexOf('  let modesDraft', modeHelpersStart);
 const modeDirectives = Object.fromEntries(modeDefs.flatMap(group => group.modes.map(mode => [mode.id, mode.directive])));
 const modeHelpers = new Function(
   'MODE_DEFS',
   'MODE_DIRECTIVES',
-  `${source.slice(exclusiveStart, exclusiveEnd)}\nreturn { normalizeModeList, toggleModeInList };`
+  `${source.slice(modeHelpersStart, modeHelpersEnd)}\nreturn { normalizeModeList, toggleModeInList };`
 )(modeDefs, modeDirectives);
 const systemStart = source.indexOf('  function buildSystemMessages(convo){');
 const systemEnd = source.indexOf('  /* ---------------- topbar menu dropdown', systemStart);
@@ -94,14 +94,16 @@ test('adds a study-first protocol to study modes', () => {
     assert.ok(study.STUDY_MODE_IDS.has(id));
     assert.ok(modeMap.has(id));
   }
+  for (const id of ['cornell-notes', 'lecture-outline', 'comparison-matrix', 'step-by-step-guide', 'one-page-cheat-sheet', 'exam-short-notes', 'timeline-sequence', 'history']) {
+    assert.ok(modeMap.has(id));
+  }
 });
 
-test('keeps alternative study modes mutually exclusive', () => {
-  const guidedGroup = modeDefs.find(group => group.group === '🧠 Guided Study & Recall');
-  assert.equal(guidedGroup.exclusive, true);
-  assert.deepEqual(modeHelpers.normalizeModeList(['guided-reading', 'flashcards']), ['guided-reading']);
+test('keeps response mode selection single-choice', () => {
+  assert.deepEqual(modeHelpers.normalizeModeList(['guided-reading', 'flashcards']), ['flashcards']);
   assert.deepEqual(modeHelpers.toggleModeInList(['guided-reading'], 'flashcards'), ['flashcards']);
-  assert.deepEqual(modeHelpers.normalizeModeList(['guided-reading', 'cfa-mode']), ['guided-reading', 'cfa-mode']);
+  assert.deepEqual(modeHelpers.normalizeModeList(['guided-reading', 'cfa-mode']), ['cfa-mode']);
+  assert.deepEqual(modeHelpers.toggleModeInList(['guided-reading'], 'guided-reading'), []);
 });
 
 test('parses flashcard blocks and ignores incomplete cards', () => {
