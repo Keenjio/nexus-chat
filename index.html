@@ -540,6 +540,10 @@
   .composer-box::before{display:none;}
   .composer-box::after{display:none;}
   .composer-box>*{position:relative;z-index:1;}
+  .next-topic-btn{display:none;flex:none;align-items:center;gap:5px;align-self:flex-end;height:36px;padding:0 11px;border:1px solid var(--line);border-radius:999px;background:var(--bg-2);color:var(--text-mid);font-family:'Inter',sans-serif;font-size:11.5px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s,color .15s,opacity .15s;}
+  .next-topic-btn.show{display:inline-flex;}
+  .next-topic-btn:hover{background:var(--bg-3);border-color:var(--text-lo);color:var(--text-hi);}
+  .next-topic-btn:disabled{opacity:.35;cursor:not-allowed;}
   .composer-box:focus-within{border-color:rgba(255,255,255,.24);background:linear-gradient(180deg,rgba(42,42,42,.99),rgba(15,15,15,.99));box-shadow:0 0 0 1px rgba(255,255,255,.04),0 20px 48px rgba(0,0,0,.48),0 2px 0 rgba(255,255,255,.05) inset,0 -14px 24px rgba(0,0,0,.18) inset;}
   textarea#messageInput{flex:1;min-width:0;background:none;border:none;outline:none;resize:none;color:var(--text-hi);font-family:'Inter',sans-serif;font-size:15px;line-height:1.5;max-height:180px;padding:6px 0;text-shadow:0 1px 0 rgba(0,0,0,.35);}
   textarea#messageInput::placeholder{color:rgba(180,180,180,.78);}
@@ -554,8 +558,9 @@
   @media (max-width:640px){
     .composer{padding:10px 12px 14px;}
     .composer-box{min-height:54px;border-radius:24px;padding:9px 9px 9px 15px;}
-    textarea#messageInput{font-size:16px;}
-    .send-btn{width:36px;height:36px;}
+     textarea#messageInput{font-size:16px;}
+     .next-topic-btn{padding:0 8px;font-size:11px;}
+     .send-btn{width:36px;height:36px;}
   }
 
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg-2);border:1px solid var(--line);color:var(--text-hi);padding:11px 18px;border-radius:10px;font-size:12.5px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:80;box-shadow:0 14px 34px rgba(0,0,0,.5);}
@@ -792,6 +797,10 @@
         <div class="slash-popup" id="slashPopup"></div>
         <div class="composer-box">
           <textarea id="messageInput" rows="1" placeholder="Message Nexus…"></textarea>
+          <button class="next-topic-btn" id="nextTopicBtn" type="button" aria-label="Next topic from book library" title="Next topic from book library">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Next topic</span>
+          </button>
           <button class="send-btn" id="sendBtn" data-provider="nvidia" aria-label="Send message">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M12 5L6 11M12 5L18 11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
@@ -1487,7 +1496,7 @@
     sideMessageInput: $('sideMessageInput'), sideSendBtn: $('sideSendBtn'),
     sideCloseBtn: $('sideCloseBtn'), sideClearBtn: $('sideClearBtn'),
     pulseTop: $('pulseTop'), pulseBottom: $('pulseBottom'),
-    messageInput: $('messageInput'), sendBtn: $('sendBtn'), charCount: $('charCount'),
+    messageInput: $('messageInput'), nextTopicBtn: $('nextTopicBtn'), sendBtn: $('sendBtn'), charCount: $('charCount'),
     toast: $('toast'),
     modalOverlay: $('modalOverlay'), modalClose: $('modalClose'), modalCancel: $('modalCancel'), modalSave: $('modalSave'),
     tabs: document.querySelectorAll('.modal-tab'), panes: document.querySelectorAll('.modal-pane'),
@@ -1825,6 +1834,7 @@
       sideOpen: false,       // whether the side-chat panel is open for this conversation
       sideMessages: [],      // side chat: a small independent linear conversation (no branching)
       modes: lastModes.slice(), // sticky: new chats start with whatever modes were last active, not empty
+      topicNav: null,
       updatedAt: Date.now()
     };
   }
@@ -1958,6 +1968,7 @@
       applyChatHighlights(bubble, c, m.id);
     });
     els.thread.scrollTop = els.thread.scrollHeight;
+    syncNextTopicButton();
   }
 
   /* ---- Persisted highlights on main-chat messages: wraps saved substrings in <mark>-style spans.
@@ -2828,6 +2839,7 @@
     }
   });
   els.sendBtn.addEventListener('click', sendMessage);
+  els.nextTopicBtn && els.nextTopicBtn.addEventListener('click', goToNextTopic);
   document.querySelectorAll('.chip').forEach(chip => {
     if (chip.id === 'emptyTopicsChip') return; // handled separately — opens the Topics browser instead of filling composer
     chip.addEventListener('click', () => {
@@ -2904,10 +2916,12 @@
     const pending = renderBubble('assistant', '', { typing: true, provider });
     busy = true;
     els.sendBtn.disabled = true;
+    syncNextTopicButton();
 
     await requestAssistantReply(convo, userMsg, pending, 0);
     busy = false;
     els.sendBtn.disabled = false;
+    syncNextTopicButton();
     els.messageInput.focus();
   }
 
@@ -3535,6 +3549,67 @@
     if (e.key === 'Enter') { e.preventDefault(); handleAddBook(); }
   });
 
+  function makeTopicNav(bookIndex, vol, mod, moduleIndex, topicIndex){
+    return {
+      bookIndex: Number(bookIndex) || 0,
+      bookTitle: vol.title,
+      moduleIndex: Number(moduleIndex) || 0,
+      moduleTitle: mod.title,
+      topicIndex: Number(topicIndex) || 0
+    };
+  }
+  function setTopicNav(nav){
+    const convo = ensureActiveConversation();
+    convo.topicNav = nav ? {
+      bookIndex: nav.bookIndex,
+      bookTitle: nav.bookTitle,
+      moduleIndex: nav.moduleIndex,
+      moduleTitle: nav.moduleTitle,
+      topicIndex: nav.topicIndex
+    } : null;
+    persistAll();
+    syncNextTopicButton();
+  }
+  function nextTopicFrom(nav){
+    if (!nav) return null;
+    const books = allBooks();
+    let book = books[nav.bookIndex];
+    if (!book || book.title !== nav.bookTitle) book = books.find(candidate => candidate.title === nav.bookTitle);
+    if (!book || !Array.isArray(book.modules)) return null;
+    let moduleIndex = Number(nav.moduleIndex);
+    let module = book.modules[moduleIndex];
+    if (!module || module.title !== nav.moduleTitle) {
+      moduleIndex = book.modules.findIndex(candidate => candidate.title === nav.moduleTitle);
+      module = book.modules[moduleIndex];
+    }
+    if (!module) return null;
+    const topicIndex = Number(nav.topicIndex);
+    if (Number.isInteger(topicIndex) && topicIndex + 1 < module.topics.length) {
+      return { book, bookIndex: books.indexOf(book), module, moduleIndex, topicIndex: topicIndex + 1, topic: module.topics[topicIndex + 1] };
+    }
+    for (let i = moduleIndex + 1; i < book.modules.length; i++) {
+      if (book.modules[i].topics.length) return { book, bookIndex: books.indexOf(book), module: book.modules[i], moduleIndex: i, topicIndex: 0, topic: book.modules[i].topics[0] };
+    }
+    return null;
+  }
+  function syncNextTopicButton(){
+    const btn = els.nextTopicBtn;
+    if (!btn) return;
+    const convo = getActive();
+    const next = convo && convo.topicNav ? nextTopicFrom(convo.topicNav) : null;
+    btn.classList.toggle('show', !!next);
+    btn.setAttribute('aria-hidden', next ? 'false' : 'true');
+    btn.disabled = !!(busy || topicGenerationInFlight);
+    if (next) btn.title = 'Next: ' + next.topic + ' — ' + next.module.title;
+  }
+  async function goToNextTopic(){
+    const convo = getActive();
+    const next = convo && convo.topicNav ? nextTopicFrom(convo.topicNav) : null;
+    if (!next) { syncNextTopicButton(); return; }
+    const moduleLabel = 'Module ' + (next.module.num || next.moduleIndex + 1) + ' — ' + next.module.title;
+    await selectTopic(next.book.title, moduleLabel, next.topic, next.module.topics, !!next.book.exam, makeTopicNav(next.bookIndex, next.book, next.module, next.moduleIndex, next.topicIndex));
+  }
+
   let topicGenerationInFlight = false; // guards selectTopic specifically, independent of `busy`,
   // so a fast double-tap on two different topics can't race each other's DOM writes to the
   // composer before the first one even gets as far as sendTurn() setting `busy`.
@@ -3577,7 +3652,7 @@
       siblingLine;
   }
 
-  async function selectTopic(volTitle, modTitle, topic, siblingTopics, isExam){
+  async function selectTopic(volTitle, modTitle, topic, siblingTopics, isExam, navContext){
     if (busy || topicGenerationInFlight) {
       // A previous reply — or a previous topic's question-generation step — is still in flight.
       // Bail out with a clear toast instead of silently clearing the composer and doing nothing,
@@ -3585,7 +3660,9 @@
       showToast('Please wait for the current response to finish before picking another topic', true);
       return;
     }
+    if (navContext) setTopicNav(navContext);
     topicGenerationInFlight = true;
+    syncNextTopicButton();
     closeTopicsModal();
     showToast('Crafting a question about \u201c' + topic + '\u201d\u2026');
     els.messageInput.value = '';
@@ -3620,11 +3697,12 @@
       const fallbackText = buildFallbackTopicQuestion(volTitle, modTitle, topic, siblingTopics, isExam);
       els.messageInput.value = fallbackText;
       els.messageInput.dispatchEvent(new Event('input'));
-      showTopicGenError(err.message, () => selectTopic(volTitle, modTitle, topic, siblingTopics, isExam));
+      showTopicGenError(err.message, () => selectTopic(volTitle, modTitle, topic, siblingTopics, isExam, navContext));
     } finally {
       topicGenerationInFlight = false;
+      syncNextTopicButton();
       els.messageInput.disabled = false;
-      els.messageInput.placeholder = 'Message Nexus\u2026';
+      els.messageInput.placeholder = 'Message Nexus…';
     }
   }
 
@@ -3684,7 +3762,7 @@
     hint.textContent = books.length + ' books · ' + books.reduce((n,v)=>n+v.modules.length,0) + ' modules — click a book to expand, then a module, then a topic.';
     els.topicsBody.appendChild(hint);
 
-    books.forEach(vol => {
+    books.forEach((vol, bookIndex) => {
       const volEl = document.createElement('div');
       volEl.className = 'topic-vol';
       const totalTopics = vol.modules.reduce((n,m)=>n+m.topics.length, 0);
@@ -3713,7 +3791,7 @@
         body.appendChild(rmRow);
       }
 
-      vol.modules.forEach(mod => {
+      vol.modules.forEach((mod, moduleIndex) => {
         const modEl = document.createElement('div');
         modEl.className = 'topic-mod';
         const mhead = document.createElement('button');
@@ -3723,12 +3801,12 @@
         mhead.addEventListener('click', () => modEl.classList.toggle('open'));
         const mbody = document.createElement('div');
         mbody.className = 'topic-mod-body';
-        mod.topics.forEach(t => {
+        mod.topics.forEach((t, topicIndex) => {
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'topic-item';
           btn.textContent = t;
-          btn.addEventListener('click', () => selectTopic(vol.title, 'Module ' + mod.num + ' — ' + mod.title, t, mod.topics, !!vol.exam));
+          btn.addEventListener('click', () => selectTopic(vol.title, 'Module ' + mod.num + ' — ' + mod.title, t, mod.topics, !!vol.exam, makeTopicNav(bookIndex, vol, mod, moduleIndex, topicIndex)));
           mbody.appendChild(btn);
         });
         modEl.appendChild(mhead);
@@ -3746,11 +3824,12 @@
     if (!els.topicsBody) return;
     const q = query.trim().toLowerCase();
     const results = [];
-    allBooks().forEach(vol => {
-      vol.modules.forEach(mod => {
-        mod.topics.forEach(t => {
+    const books = allBooks();
+    books.forEach((vol, bookIndex) => {
+      vol.modules.forEach((mod, moduleIndex) => {
+        mod.topics.forEach((t, topicIndex) => {
           if (t.toLowerCase().includes(q) || mod.title.toLowerCase().includes(q) || vol.title.toLowerCase().includes(q)) {
-            results.push({ vol, mod, t });
+            results.push({ vol, mod, t, bookIndex, moduleIndex, topicIndex });
           }
         });
       });
@@ -3770,7 +3849,7 @@
       btn.innerHTML = '<span class="ti-topic"></span><span class="ti-path"></span>';
       btn.querySelector('.ti-topic').textContent = r.t;
       btn.querySelector('.ti-path').textContent = r.vol.title + ' · ' + r.mod.title;
-      btn.addEventListener('click', () => selectTopic(r.vol.title, 'Module ' + r.mod.num + ' — ' + r.mod.title, r.t, r.mod.topics, !!r.vol.exam));
+      btn.addEventListener('click', () => selectTopic(r.vol.title, 'Module ' + r.mod.num + ' — ' + r.mod.title, r.t, r.mod.topics, !!r.vol.exam, makeTopicNav(r.bookIndex, r.vol, r.mod, r.moduleIndex, r.topicIndex)));
       wrap.appendChild(btn);
     });
     els.topicsBody.appendChild(wrap);
