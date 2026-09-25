@@ -362,7 +362,7 @@
   .msg-action-btn{display:inline-flex;align-items:center;gap:5px;margin-top:10px;margin-right:6px;background:none;border:1px solid var(--line);color:var(--text-faint);font-family:'Inter',sans-serif;font-size:11.5px;font-weight:500;padding:5px 10px;border-radius:14px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;opacity:0;}
   .msg.assistant:hover .msg-action-btn, .msg.user:hover .msg-action-btn{opacity:1;}
   .msg-action-btn:hover{color:var(--text-hi);border-color:var(--text-lo);background:var(--bg-1);}
-  .msg-action-btn.read-aloud-btn,.msg-action-btn.stop-reading-btn{opacity:1;}
+  .msg-action-btn.read-aloud-btn,.msg-action-btn.read-from-selection-btn,.msg-action-btn.stop-reading-btn{opacity:1;}
   @media (max-width:880px){
     /* No hover on touch — keep action buttons visible so they're actually reachable */
     .msg-action-btn, .branch-new-btn{opacity:1;}
@@ -978,6 +978,11 @@
           </div>
           <label class="switch"><input type="checkbox" id="pulseToggle" checked><span class="switch-track"></span></label>
         </div>
+        <div>
+          <div class="field-label">Read-aloud voice</div>
+          <p class="field-desc">Choose a natural installed voice for the Read aloud buttons, or let Nexus pick the best available one.</p>
+          <select id="speechVoiceSelect" aria-label="Read-aloud voice" style="margin-top:8px;"></select>
+        </div>
       </div>
 
       <!-- DATA -->
@@ -1134,7 +1139,8 @@
     prompts: LS.get('nexus_prompts', ['Explain like I\'m five:','Summarize in three bullet points:','Refactor this code for clarity:']),
     theme: LS.get('nexus_theme', 'ink'),
     compact: LS.get('nexus_compact', false),
-    pulse: LS.get('nexus_pulse', true)
+    pulse: LS.get('nexus_pulse', true),
+    speechVoice: LS.get('nexus_speech_voice', '')
   };
   // Ensure both providers have a modelKeys bucket, even on a first run.
     if (!draft.modelKeys.nvidia) draft.modelKeys.nvidia = {};
@@ -1322,6 +1328,7 @@
     LS.set('nexus_theme', applied.theme);
     LS.set('nexus_compact', applied.compact);
     LS.set('nexus_pulse', applied.pulse);
+    LS.set('nexus_speech_voice', applied.speechVoice);
   }
 
   let speechRunId = 0;
@@ -1329,6 +1336,8 @@
     return typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.speechSynthesis.speak === 'function' && typeof window.SpeechSynthesisUtterance === 'function';
   }
   let preferredSpeechVoice = null;
+  let speechVoices = [];
+  function speechVoiceKey(voice){ return String(voice.name || '') + '|' + String(voice.lang || ''); }
   function speechVoiceScore(voice){
     const name = String(voice.name || '').toLowerCase();
     const lang = String(voice.lang || '').toLowerCase();
@@ -1341,16 +1350,43 @@
     if (voice.default) score += 1;
     return score;
   }
-  function refreshSpeechVoice(){
+  function refreshSpeechVoice(selectedKey){
     if (!speechSupported() || typeof window.speechSynthesis.getVoices !== 'function') return;
-    const voices = window.speechSynthesis.getVoices();
-    const english = voices.filter(voice => /^en/i.test(String(voice.lang || '')));
-    const pool = english.length ? english : voices;
-    preferredSpeechVoice = pool.slice().sort((a, b) => speechVoiceScore(b) - speechVoiceScore(a))[0] || null;
+    speechVoices = window.speechSynthesis.getVoices();
+    const english = speechVoices.filter(voice => /^en/i.test(String(voice.lang || '')));
+    const pool = english.length ? english : speechVoices;
+    const key = selectedKey !== undefined ? selectedKey : (applied && applied.speechVoice) || '';
+    preferredSpeechVoice = pool.find(voice => speechVoiceKey(voice) === key) || pool.slice().sort((a, b) => speechVoiceScore(b) - speechVoiceScore(a))[0] || null;
+  }
+  function populateSpeechVoiceSelect(){
+    const select = document.getElementById('speechVoiceSelect');
+    if (!select) return;
+    refreshSpeechVoice(draft && draft.speechVoice);
+    select.innerHTML = '';
+    const bestOption = document.createElement('option');
+    bestOption.value = '';
+    bestOption.textContent = speechVoices.length ? 'Best available voice' : 'No voices available';
+    select.appendChild(bestOption);
+    const english = speechVoices.filter(voice => /^en/i.test(String(voice.lang || '')));
+    const pool = english.length ? english : speechVoices;
+    pool.forEach(voice => {
+      const option = document.createElement('option');
+      option.value = speechVoiceKey(voice);
+      option.textContent = voice.name + ' — ' + voice.lang + (voice === preferredSpeechVoice ? ' (recommended)' : '');
+      select.appendChild(option);
+    });
+    select.disabled = !speechSupported() || !speechVoices.length;
+    const chosen = draft && draft.speechVoice;
+    select.value = chosen && pool.some(voice => speechVoiceKey(voice) === chosen) ? chosen : '';
   }
   if (speechSupported()) {
     refreshSpeechVoice();
-    if (typeof window.speechSynthesis.addEventListener === 'function') window.speechSynthesis.addEventListener('voiceschanged', refreshSpeechVoice);
+    if (typeof window.speechSynthesis.addEventListener === 'function') {
+      window.speechSynthesis.addEventListener('voiceschanged', () => {
+        refreshSpeechVoice();
+        if (typeof populateSpeechVoiceSelect === 'function') populateSpeechVoiceSelect();
+      });
+    }
   }
   function stopSpeaking(){
     speechRunId++;
@@ -1416,6 +1452,16 @@
       try { window.speechSynthesis.speak(utterance); } catch {}
     });
   }
+  function speechTextFromSelection(bubble){
+    if (!bubble || typeof window.getSelection !== 'function') return '';
+    const selection = window.getSelection();
+    if (!selection || !selection.anchorNode || !bubble.contains(selection.anchorNode)) return '';
+    const selectedRange = selection.getRangeAt(0);
+    const tailRange = document.createRange();
+    tailRange.setStart(selectedRange.startContainer, selectedRange.startOffset);
+    tailRange.setEnd(bubble, bubble.childNodes.length);
+    return tailRange.toString().trim();
+  }
 
   const $ = id => document.getElementById(id);
   const els = {
@@ -1451,7 +1497,7 @@
     modelInput: $('modelInput'), modelDesc: $('modelDesc'), pinModelBtn: $('pinModelBtn'), modelChips: $('modelChips'),
     fetchModelsBtn: $('fetchModelsBtn'), fetchModelsStatus: $('fetchModelsStatus'),
     systemPrompt: $('systemPrompt'), promptChips: $('promptChips'), newPromptInput: $('newPromptInput'), addPromptBtn: $('addPromptBtn'),
-    themeInk: $('themeInk'), themeGraphite: $('themeGraphite'), compactToggle: $('compactToggle'), pulseToggle: $('pulseToggle'),
+    themeInk: $('themeInk'), themeGraphite: $('themeGraphite'), compactToggle: $('compactToggle'), pulseToggle: $('pulseToggle'), speechVoiceSelect: $('speechVoiceSelect'),
     statConvos: $('statConvos'), statMsgs: $('statMsgs'),
     clearConvosBtn: $('clearConvosBtn'), resetAllBtn: $('resetAllBtn')
   };
@@ -1904,6 +1950,7 @@
         addRegenerateButton(wrap, c, m.id);
         addCopyButton(wrap, m.content);
         addReadAloudButton(wrap, m.content);
+        addReadFromSelectionButton(wrap);
         addStopReadingButton(wrap);
         // branch button on assistant messages, to start a new branch from here
         addBranchButton(wrap, c, m.id);
@@ -1994,6 +2041,25 @@
     btn.addEventListener('click', () => {
       if (!speechSupported()) { showToast('Read aloud is not supported by this browser', true); return; }
       speakResponse(text);
+    });
+    wrap.querySelector('.bubble-wrap').appendChild(btn);
+  }
+
+  function addReadFromSelectionButton(wrap){
+    const bubble = wrap.querySelector('.bubble');
+    let capturedSelection = '';
+    const captureSelection = () => { capturedSelection = speechTextFromSelection(bubble); };
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'msg-action-btn read-from-selection-btn'; btn.title = 'Read from the selected point to the end of this response'; btn.setAttribute('aria-label', 'Read from selection');
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 5v14M18 5L9 12l9 7V5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Read from selection';
+    btn.addEventListener('pointerdown', captureSelection);
+    btn.addEventListener('mousedown', captureSelection);
+    btn.addEventListener('click', () => {
+      if (!speechSupported()) { showToast('Read aloud is not supported by this browser', true); return; }
+      const fromSelection = capturedSelection || speechTextFromSelection(bubble);
+      capturedSelection = '';
+      if (!fromSelection) { showToast('Select a point inside the response first', true); return; }
+      speakResponse(fromSelection);
     });
     wrap.querySelector('.bubble-wrap').appendChild(btn);
   }
@@ -2955,7 +3021,11 @@
   // string to the system messages sent with each turn; selecting another mode replaces the current one.
   const MODE_DEFS = [
     { group: 'Listening & Audio', modes: [
-      { id: 'listening-section', name: 'Listening Section', desc: 'A spoken-first briefing written for comfortable, natural read-aloud delivery.', directive: "Activate Listening Section Mode. Write this response for a listener, not for someone scanning a page. The answer should sound like a clear, thoughtful audio briefing when spoken aloud.\n\n1. Open with one sentence that states the main idea in plain, natural language. Do not begin with a greeting, a disclaimer, or a restatement of the question.\n2. Use short, complete sentences and conversational paragraphs. Keep most paragraphs to one to three sentences, with one main idea per sentence. Vary sentence length so the delivery does not become mechanical.\n3. Use spoken signposts such as 'First', 'The key point is', 'Here is why', 'To put it simply', and 'In short'. Use them only when they genuinely help the listener follow the flow.\n4. Avoid visual-only formatting. Do not use markdown tables, code blocks, raw LaTeX, diagrams, ASCII art, citations, footnotes, dense bullet walls, or decorative symbols. If a list is truly necessary, introduce it in a sentence and make every item a complete spoken sentence rather than a fragment.\n5. Write numbers, dates, units, formulas, abbreviations, and symbols in a pronunciation-safe way. Say 'for example' instead of 'e.g.', say 'approximately' instead of 'approx.', and expand an acronym or technical abbreviation on first use. Avoid slash notation, stacked parentheses, and unexplained symbols.\n6. For technical material, explain the idea in ordinary speech first. If a calculation matters, give a short worked example with the numbers written in a way that can be heard naturally, rather than relying on a formula that only works on screen.\n7. Use simple spoken headings only when the answer is long, and make them sound like natural transitions such as 'The main idea', 'Why it works', and 'What to remember'. Do not use headings as a rigid template.\n8. Keep the pacing calm and deliberate. Prefer concrete nouns and active verbs, avoid semicolon chains, avoid dense parenthetical asides, and do not use all caps or decorative punctuation for emphasis.\n9. Preserve accuracy and useful depth. Do not simplify away important qualifications, uncertainty, or counterexamples; instead, explain them in clear spoken sentences.\n10. End with one concise spoken recap when it helps the listener consolidate the answer. Do not add a quiz, a follow-up offer, or a comment about the listening format unless the user asked for one." }
+      { id: 'listening-section', name: 'Listening Section', desc: 'A spoken-first briefing written for comfortable, natural read-aloud delivery.', directive: "Activate Listening Section Mode. Write this response for a listener, not for someone scanning a page. The answer should sound like a clear, thoughtful audio briefing when spoken aloud.\n\n1. Open with one sentence that states the main idea in plain, natural language. Do not begin with a greeting, a disclaimer, or a restatement of the question.\n2. Use short, complete sentences and conversational paragraphs. Keep most paragraphs to one to three sentences, with one main idea per sentence. Vary sentence length so the delivery does not become mechanical.\n3. Use spoken signposts such as 'First', 'The key point is', 'Here is why', 'To put it simply', and 'In short'. Use them only when they genuinely help the listener follow the flow.\n4. Avoid visual-only formatting. Do not use markdown tables, code blocks, raw LaTeX, diagrams, ASCII art, citations, footnotes, dense bullet walls, or decorative symbols. If a list is truly necessary, introduce it in a sentence and make every item a complete spoken sentence rather than a fragment.\n5. Write numbers, dates, units, formulas, abbreviations, and symbols in a pronunciation-safe way. Say 'for example' instead of 'e.g.', say 'approximately' instead of 'approx.', and expand an acronym or technical abbreviation on first use. Avoid slash notation, stacked parentheses, and unexplained symbols.\n6. For technical material, explain the idea in ordinary speech first. If a calculation matters, give a short worked example with the numbers written in a way that can be heard naturally, rather than relying on a formula that only works on screen.\n7. Use simple spoken headings only when the answer is long, and make them sound like natural transitions such as 'The main idea', 'Why it works', and 'What to remember'. Do not use headings as a rigid template.\n8. Keep the pacing calm and deliberate. Prefer concrete nouns and active verbs, avoid semicolon chains, avoid dense parenthetical asides, and do not use all caps or decorative punctuation for emphasis.\n9. Preserve accuracy and useful depth. Do not simplify away important qualifications, uncertainty, or counterexamples; instead, explain them in clear spoken sentences.\n10. End with one concise spoken recap when it helps the listener consolidate the answer. Do not add a quiz, a follow-up offer, or a comment about the listening format unless the user asked for one." },
+      { id: 'audio-concise', name: 'Concise Audio', desc: 'A short, clean answer tuned for a quick listen.', directive: "Activate Concise Audio Mode. Write for a listener who wants the answer without a lecture.\n\n1. Give the direct answer in the first sentence, using plain everyday words.\n2. Keep the whole response to three to six complete spoken sentences unless the question genuinely requires more.\n3. Include no more than one supporting example or one important qualification.\n4. Do not use headings, tables, code blocks, raw formulas, dense bullet lists, citations, or decorative symbols.\n5. Write numbers, abbreviations, and symbols in a form that can be heard naturally.\n6. End with one short takeaway sentence. Do not ask a follow-up question unless the user requested one." },
+      { id: 'audio-conversational', name: 'Conversational Explainer', desc: 'Warm, natural narration that feels like a tutor talking with you.', directive: "Activate Conversational Explainer Mode. Write as though one person is calmly explaining the idea to another person who is listening.\n\n1. Open with a natural hook or the central question in plain language, not with headings or a greeting.\n2. Use contractions, concrete nouns, and active verbs. Prefer 'you can think of it as' over formal throat-clearing.\n3. Use natural spoken transitions such as 'So what does that mean?', 'Here is the interesting part', 'That matters because', and 'Let us look at one example'.\n4. Keep paragraphs short and let the listener know what is coming next before introducing a new idea.\n5. Explain technical terms in the sentence where they appear, using an analogy only when it makes the idea easier to hear.\n6. Avoid visual-only formatting, dense lists, raw notation, tables, and code. Never write as if the listener can see a diagram or scroll through a page.\n7. Keep the tone warm, calm, and confident. Vary sentence length, and end with one memorable takeaway rather than a sales pitch or a generic follow-up." },
+      { id: 'audio-exam-notes', name: 'Exam Notes Audio', desc: 'High-yield facts, distinctions, and traps spoken for revision.', directive: "Activate Exam Notes Audio Mode. Create a focused revision briefing that sounds natural when heard rather than read.\n\n1. Begin by naming the topic and the one thing the learner should be able to explain or apply.\n2. Define the essential terms in complete sentences, using the exact vocabulary an exam or professional test would use.\n3. Make the highest-value distinctions explicit, especially between terms that are often confused. Say why the distinction matters.\n4. Call out the most common traps, unrealistic assumptions, and easy-to-miss conditions in plain language.\n5. For quantitative topics, verbalize one short worked example with the numbers and operations written so they can be heard clearly.\n6. Use spoken signposts such as 'First', 'The key distinction is', 'A common mistake is', and 'Remember this'.\n7. Do not use tables, raw formulas, dense bullet walls, footnotes, or decorative symbols. Every point must make sense as a sentence.\n8. Close with two or three spoken self-check questions that test understanding. Do not answer them unless the user asks." },
+      { id: 'audio-step-by-step', name: 'Step-by-Step Audio', desc: 'Procedures and calculations delivered one clear spoken step at a time.', directive: "Activate Step-by-Step Audio Mode. Explain the process as a calm instructor guiding the listener through it.\n\n1. State the goal and the final outcome before beginning the procedure.\n2. Use spoken numbering: 'Step one', 'Step two', and so on. Keep one action or one calculation per step.\n3. Explain why a step matters when the reason is not obvious, but do not add theory between every action.\n4. For calculations, say what is being multiplied, added, compared, or rounded, and state the result in a complete sentence. Never rely on a formula that only works visually.\n5. Warn about the most likely mistake at the moment the listener is most likely to make it.\n6. Use natural transitions and short paragraphs. Avoid code blocks, tables, dense lists, raw symbols, and unexplained abbreviations.\n7. End with a brief spoken recap of the finished result and the single next action the listener should take, if there is one." }
     ] },
     { group: '🎚️ Depth & Calibration', modes: [
       { id: 'standard', name: 'Standard', desc: 'Clear, correct, no ceremony — proportional to what was actually asked.',
@@ -4229,6 +4299,7 @@
   }
   els.compactToggle.addEventListener('change', () => { draft.compact = els.compactToggle.checked; });
   els.pulseToggle.addEventListener('change', () => { draft.pulse = els.pulseToggle.checked; });
+  els.speechVoiceSelect.addEventListener('change', () => { draft.speechVoice = els.speechVoiceSelect.value; refreshSpeechVoice(draft.speechVoice); });
 
   els.clearConvosBtn.addEventListener('click', () => {
     if (!confirm('Delete all conversations? This cannot be undone.')) return;
@@ -4271,6 +4342,7 @@
     syncThemeSwatches();
     els.compactToggle.checked = draft.compact;
     els.pulseToggle.checked = draft.pulse;
+    populateSpeechVoiceSelect();
     updateDataStats();
     els.modalSave.dataset.provider = draft.provider;
     if (!freeModelsFetched) fetchFreeModels(); // kick off a background refresh the first time Settings opens
@@ -4279,6 +4351,7 @@
 
   els.modalSave.addEventListener('click', () => {
     applied = JSON.parse(JSON.stringify(draft));
+    refreshSpeechVoice(applied.speechVoice);
     persistAll();
     syncTopbar();
     syncModesToggle();
