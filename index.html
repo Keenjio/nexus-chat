@@ -362,6 +362,7 @@
   .msg-action-btn{display:inline-flex;align-items:center;gap:5px;margin-top:10px;margin-right:6px;background:none;border:1px solid var(--line);color:var(--text-faint);font-family:'Inter',sans-serif;font-size:11.5px;font-weight:500;padding:5px 10px;border-radius:14px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;opacity:0;}
   .msg.assistant:hover .msg-action-btn, .msg.user:hover .msg-action-btn{opacity:1;}
   .msg-action-btn:hover{color:var(--text-hi);border-color:var(--text-lo);background:var(--bg-1);}
+  .msg-action-btn.read-aloud-btn{opacity:1;}
   @media (max-width:880px){
     /* No hover on touch — keep action buttons visible so they're actually reachable */
     .msg-action-btn, .branch-new-btn{opacity:1;}
@@ -1323,6 +1324,64 @@
     LS.set('nexus_pulse', applied.pulse);
   }
 
+  let speechRunId = 0;
+  function speechSupported(){
+    return typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.speechSynthesis.speak === 'function' && typeof window.SpeechSynthesisUtterance === 'function';
+  }
+  function stopSpeaking(){
+    speechRunId++;
+    if (!speechSupported()) return;
+    try { window.speechSynthesis.cancel(); } catch {}
+  }
+  function cleanSpeechText(raw){
+    let text = String(raw || '');
+    text = text.replace(/\[\[\/?STICKY[^\]]*\]\]/gi, ' ');
+    text = text.replace(/\[\[\/?FLASHCARD\]\]/gi, ' ');
+    text = text.replace(/```[^\n]*\n?/g, ' ');
+    text = text.replace(/~~~[^\n]*\n?/g, ' ');
+    text = text.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1');
+    text = text.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+    text = text.replace(/<[^>]+>/g, ' ');
+    text = text.replace(/[|*_~`>#]/g, ' ');
+    text = text.replace(/\$\$?/g, ' ');
+    text = text.replace(/\\[a-zA-Z]+/g, ' ');
+    text = text.replace(/\u200b/g, '');
+    return text.replace(/\s+/g, ' ').trim();
+  }
+  function splitSpeechText(text, maxLength){
+    const source = String(text || '').trim();
+    const limit = maxLength || 220;
+    const chunks = [];
+    let remaining = source;
+    while (remaining.length > limit) {
+      let cut = remaining.lastIndexOf(' ', limit);
+      if (cut < Math.floor(limit * .55)) cut = limit;
+      chunks.push(remaining.slice(0, cut).trim());
+      remaining = remaining.slice(cut).trim();
+    }
+    if (remaining) chunks.push(remaining);
+    return chunks;
+  }
+  function speakResponse(raw){
+    if (!speechSupported()) return;
+    const text = cleanSpeechText(raw);
+    if (!text) return;
+    stopSpeaking();
+    const runId = speechRunId;
+    const chunks = splitSpeechText(text);
+    chunks.forEach((chunk, index) => {
+      const utterance = new window.SpeechSynthesisUtterance(chunk);
+      utterance.lang = document.documentElement.lang || navigator.language || 'en-US';
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      if (index === chunks.length - 1) {
+        utterance.onend = () => { if (runId === speechRunId) speechRunId++; };
+        utterance.onerror = () => { if (runId === speechRunId) speechRunId++; };
+      }
+      try { window.speechSynthesis.speak(utterance); } catch {}
+    });
+  }
+
   const $ = id => document.getElementById(id);
   const els = {
     shell: $('shell'), menuBtn: $('menuBtn'), menuDropdown: $('menuDropdown'), shortcutHints: $('shortcutHints'),
@@ -1733,6 +1792,7 @@
   }
 
   function switchConversation(id){
+    stopSpeaking();
     activeId = id;
     persistAll();
     const c = getActive();
@@ -1768,6 +1828,7 @@
   }
 
   if (els.newChatBtn) els.newChatBtn.addEventListener('click', () => {
+    stopSpeaking();
     const c = newConversationObj();
     conversations.push(c);
     activeId = c.id;
@@ -1807,6 +1868,7 @@
       } else {
         addRegenerateButton(wrap, c, m.id);
         addCopyButton(wrap, m.content);
+        addReadAloudButton(wrap, m.content);
         // branch button on assistant messages, to start a new branch from here
         addBranchButton(wrap, c, m.id);
       }
@@ -1885,6 +1947,17 @@
       navigator.clipboard?.writeText(text)
         .then(() => { const orig = btn.innerHTML; btn.innerHTML = 'Copied'; setTimeout(() => btn.innerHTML = orig, 1200); })
         .catch(() => showToast('Couldn\u2019t copy', true));
+    });
+    wrap.querySelector('.bubble-wrap').appendChild(btn);
+  }
+
+  function addReadAloudButton(wrap, text){
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'msg-action-btn read-aloud-btn'; btn.title = 'Read this response aloud'; btn.setAttribute('aria-label', 'Read this response aloud');
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H3v6h3l5 4V5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.5 8.5a5 5 0 010 7M18 6a8.5 8.5 0 010 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Read aloud';
+    btn.addEventListener('click', () => {
+      if (!speechSupported()) { showToast('Read aloud is not supported by this browser', true); return; }
+      speakResponse(text);
     });
     wrap.querySelector('.bubble-wrap').appendChild(btn);
   }
@@ -2516,6 +2589,7 @@
     if (sideBusy) return;
     const text = els.sideMessageInput.value.trim();
     if (!text) return;
+    stopSpeaking();
     const convo = ensureActiveConversation();
 
     convo.sideMessages.push({ id: uid(), role: 'user', content: text });
@@ -2700,6 +2774,7 @@
   // instead of three separate copies of the same logic.
   async function sendTurn(convo, parentId, content, opts){
     opts = opts || {};
+    stopSpeaking();
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
 
