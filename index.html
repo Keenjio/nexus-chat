@@ -90,6 +90,22 @@
   .menu-dropdown-item:hover{background:var(--bg-2);color:var(--text-hi);}
   .menu-dropdown-item:hover svg{color:var(--text-hi);}
   .menu-dropdown-item.new-chat svg{color:var(--nvidia);}
+  .menu-item-label{flex:1;min-width:0;}
+  .menu-key,.shortcut-hints kbd{font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1;font-weight:600;letter-spacing:.02em;}
+  .menu-key{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:19px;padding:0 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg-2);color:var(--text-faint);}
+  .shortcut-hints{display:none;position:fixed;min-width:278px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg-1);box-shadow:0 18px 42px rgba(0,0,0,.52);z-index:99998;pointer-events:none;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);}
+  .shortcut-hints.show{display:block;animation:shortcut-hints-in .12s ease;}
+  .shortcut-hints-title{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);padding:3px 7px 7px;}
+  .shortcut-hints-row{display:flex;align-items:center;gap:9px;padding:6px 7px;border-radius:7px;color:var(--text-mid);font-size:12px;}
+  .shortcut-hints-row:hover{background:var(--bg-2);color:var(--text-hi);}
+  .shortcut-hints-row .shortcut-combo{display:inline-flex;align-items:center;gap:4px;min-width:67px;}
+  .shortcut-hints-row .shortcut-plus{font-size:10px;color:var(--text-faint);}
+  .shortcut-hints kbd{display:inline-flex;align-items:center;justify-content:center;min-width:23px;height:20px;padding:0 5px;border:1px solid var(--line);border-bottom-color:#3a3a3a;border-radius:5px;background:var(--bg-2);color:var(--text-hi);box-shadow:0 1px 0 rgba(255,255,255,.04) inset;}
+  .shortcut-hints-foot{margin:6px 7px 2px;padding-top:7px;border-top:1px solid var(--line-soft);font-size:10.5px;color:var(--text-faint);line-height:1.45;}
+  .menu-dropdown.shortcut-mode{border-color:var(--text-lo);box-shadow:0 18px 42px rgba(0,0,0,.52),0 0 0 1px rgba(255,255,255,.04);}
+  .menu-dropdown.shortcut-mode .menu-key{border-color:var(--nvidia);color:var(--nvidia);background:var(--nvidia-glow);}
+  .menu-summary.shortcut-active{border-color:var(--nvidia);box-shadow:0 0 0 2px var(--nvidia-glow),inset 0 1px 0 rgba(255,255,255,.08);}
+  @keyframes shortcut-hints-in{from{opacity:0;transform:translateY(-4px) scale(.99);}to{opacity:1;transform:translateY(0) scale(1);}}
 
   .rail-icon-btn{
     background:none;border:none;color:var(--text-mid);width:32px;height:32px;border-radius:8px;cursor:pointer;
@@ -675,18 +691,28 @@
      after <body> opens) rather than at the very end, specifically so these elements already exist
      in the DOM by the time the main <script> below runs and queries them by id. -->
 <div class="menu-dropdown" id="menuDropdown" role="menu">
-  <button type="button" class="menu-dropdown-item new-chat" id="newChatBtn" data-provider="nvidia">
+  <button type="button" class="menu-dropdown-item new-chat" id="newChatBtn" data-provider="nvidia" aria-keyshortcuts="Alt+M N">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    New chat
+    <span class="menu-item-label">New chat</span><kbd class="menu-key">N</kbd>
   </button>
-  <button type="button" class="menu-dropdown-item" id="topicsBtn">
+  <button type="button" class="menu-dropdown-item" id="topicsBtn" aria-keyshortcuts="Alt+M B">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    Book library
+    <span class="menu-item-label">Book library</span><kbd class="menu-key">B</kbd>
   </button>
-  <button type="button" class="menu-dropdown-item" id="settingsBtn">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9A1.65 1.65 0 0010 3.09V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.8"/></svg>
-    Settings
+  <button type="button" class="menu-dropdown-item" id="settingsBtn" aria-keyshortcuts="Alt+M S">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 00.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.8"/></svg>
+    <span class="menu-item-label">Settings</span><kbd class="menu-key">S</kbd>
   </button>
+</div>
+<div class="shortcut-hints" id="shortcutHints" role="status" aria-live="polite" aria-hidden="true">
+  <div class="shortcut-hints-title">Keyboard shortcuts</div>
+  <div class="shortcut-hints-row"><span class="shortcut-combo"><kbd>Alt</kbd></span><span>Show this menu</span></div>
+  <div class="shortcut-hints-row"><span class="shortcut-combo"><kbd>Alt</kbd><span class="shortcut-plus">+</span><kbd>M</kbd></span><span>Open menu</span></div>
+  <div class="shortcut-hints-row"><span class="shortcut-combo"><kbd>Alt</kbd><span class="shortcut-plus">+</span><kbd>S</kbd></span><span>Toggle side chat</span></div>
+  <div class="shortcut-hints-row"><span class="shortcut-combo"><kbd>Alt</kbd><span class="shortcut-plus">+</span><kbd>N</kbd></span><span>Toggle notes</span></div>
+  <div class="shortcut-hints-row"><span class="shortcut-combo"><kbd>Alt</kbd><span class="shortcut-plus">+</span><kbd>R</kbd></span><span>Response modes</span></div>
+  <div class="shortcut-hints-row"><span class="shortcut-combo"><kbd>Alt</kbd><span class="shortcut-plus">+</span><kbd>B</kbd></span><span>Book library</span></div>
+  <div class="shortcut-hints-foot">With the menu open, press <b>N</b> for new chat, <b>B</b> for the library, or <b>S</b> for settings.</div>
 </div>
 
 <div class="shell" id="shell">
@@ -697,7 +723,7 @@
   <div class="main">
     <div class="topbar">
       <div class="menu-dropdown-wrap">
-        <button type="button" class="side-toggle menu-summary" id="menuBtn" aria-label="Menu" aria-expanded="false" title="Menu — new chat, book library, settings">
+        <button type="button" class="side-toggle menu-summary" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-keyshortcuts="Alt+M" title="Menu — Alt+M, then N/B/S">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           Menu
         </button>
@@ -706,12 +732,12 @@
       <input type="text" id="searchInput" style="display:none;">
       <div id="convoList" style="display:none;"></div>
       <div class="spacer"></div>
-      <button type="button" class="side-toggle" id="dualToggle" title="Open a side chat — quick, unrelated questions with no memory, without derailing this conversation">
+      <button type="button" class="side-toggle" id="dualToggle" aria-keyshortcuts="Alt+S" title="Open a side chat — Alt+S">
         <span class="ddot"></span>
         Side chat
       </button>
 
-      <button type="button" class="modes-toggle" id="modesToggle" title="Response modes — layer extra behaviors onto every answer">
+      <button type="button" class="modes-toggle" id="modesToggle" aria-keyshortcuts="Alt+R" title="Response modes — Alt+R">
         <span class="mdot"></span>
         <span id="modesLabel">Modes</span>
         <span class="mcount" id="modesCount" style="display:none;">0</span>
@@ -720,7 +746,7 @@
         <button type="button" class="rail-icon-btn" id="installAppBtn" aria-label="Install app" title="Install Nexus as an app" style="display:none;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v13M12 16l-5-5M12 16l5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
-        <button type="button" class="side-toggle" id="notesToggle" title="Notes — a free-form scratchpad, separate from the chat">
+        <button type="button" class="side-toggle" id="notesToggle" aria-keyshortcuts="Alt+N" title="Notes — Alt+N">
           <span class="ddot"></span>
           Notes
         </button>
@@ -1299,7 +1325,7 @@
 
   const $ = id => document.getElementById(id);
   const els = {
-    shell: $('shell'), menuBtn: $('menuBtn'), menuDropdown: $('menuDropdown'),
+    shell: $('shell'), menuBtn: $('menuBtn'), menuDropdown: $('menuDropdown'), shortcutHints: $('shortcutHints'),
     newChatBtn: $('newChatBtn'), searchInput: $('searchInput'), convoList: $('convoList'),
     settingsBtn: $('settingsBtn'), topSettingsBtn: $('topSettingsBtn'),
     providerBadge: $('providerBadge'), topModelName: $('topModelName'),
@@ -3646,6 +3672,38 @@
   // there) that let other page content silently swallow clicks on it despite it being visually on
   // top. Since it's portaled, position:fixed + inline top/left is set here from the button's real
   // getBoundingClientRect() every time it opens, so it still visually anchors under the button.
+  let shortcutHintsTimer = 0;
+  let menuShortcutMode = false;
+  function positionShortcutHints(){
+    if (!els.menuBtn || !els.shortcutHints) return;
+    const r = els.menuBtn.getBoundingClientRect();
+    const width = els.shortcutHints.offsetWidth || 290;
+    const left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - width - 8));
+    els.shortcutHints.style.left = left + 'px';
+    els.shortcutHints.style.top = (r.bottom + 8) + 'px';
+  }
+  function hideShortcutHints(){
+    clearTimeout(shortcutHintsTimer);
+    if (els.shortcutHints) {
+      els.shortcutHints.classList.remove('show');
+      els.shortcutHints.setAttribute('aria-hidden', 'true');
+    }
+    if (els.menuBtn) els.menuBtn.classList.remove('shortcut-active');
+  }
+  function showShortcutHints(){
+    if (!els.shortcutHints || menuShortcutMode) return;
+    clearTimeout(shortcutHintsTimer);
+    positionShortcutHints();
+    els.shortcutHints.classList.add('show');
+    positionShortcutHints();
+    els.shortcutHints.setAttribute('aria-hidden', 'false');
+    if (els.menuBtn) els.menuBtn.classList.add('shortcut-active');
+    shortcutHintsTimer = setTimeout(hideShortcutHints, 7000);
+  }
+  function setMenuShortcutMode(active){
+    menuShortcutMode = !!active;
+    if (els.menuDropdown) els.menuDropdown.classList.toggle('shortcut-mode', menuShortcutMode);
+  }
   function positionMenuDropdown(){
     if (!els.menuBtn || !els.menuDropdown) return;
     const r = els.menuBtn.getBoundingClientRect();
@@ -3655,11 +3713,15 @@
   function openMenuDropdown(){
     if (!els.menuDropdown) return;
     positionMenuDropdown();
+    setMenuShortcutMode(true);
+    hideShortcutHints();
     els.menuDropdown.classList.add('show');
     if (els.menuBtn) els.menuBtn.setAttribute('aria-expanded', 'true');
   }
   function closeMenuDropdown(){
     if (!els.menuDropdown) return;
+    setMenuShortcutMode(false);
+    hideShortcutHints();
     els.menuDropdown.classList.remove('show');
     if (els.menuBtn) els.menuBtn.setAttribute('aria-expanded', 'false');
   }
@@ -3687,6 +3749,53 @@
   const shareBtn = $('shareBtn'), moreBtn = $('moreBtn');
   if (shareBtn) shareBtn.addEventListener('click', () => showToast('Share coming soon'));
   if (moreBtn) moreBtn.addEventListener('click', () => showToast('No additional options yet'));
+
+  function runMenuShortcut(key){
+    const button = { n: els.newChatBtn, b: els.topicsBtn, s: els.settingsBtn }[key];
+    if (!button) return false;
+    closeMenuDropdown();
+    button.click();
+    return true;
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.isComposing) return;
+    const key = String(e.key || '').toLowerCase();
+    if (e.key === 'Alt' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.repeat) {
+      e.preventDefault();
+      showShortcutHints();
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (els.shortcutHints && els.shortcutHints.classList.contains('show')) {
+        hideShortcutHints();
+        e.preventDefault();
+      }
+      return;
+    }
+    if (menuShortcutMode && !e.ctrlKey && !e.metaKey && ['n', 'b', 's'].includes(key)) {
+      e.preventDefault();
+      runMenuShortcut(key);
+      return;
+    }
+    if (!e.altKey || e.ctrlKey || e.metaKey) return;
+    const shortcutActions = {
+      m: openMenuDropdown,
+      s: () => toggleSidePanel(),
+      n: () => toggleNotesPanel(),
+      r: openModesModal,
+      b: openTopicsModal
+    };
+    if (shortcutActions[key]) {
+      e.preventDefault();
+      hideShortcutHints();
+      shortcutActions[key]();
+    }
+  });
+  document.addEventListener('pointerdown', (e) => {
+    if (els.shortcutHints && !els.shortcutHints.contains(e.target)) hideShortcutHints();
+  });
+  window.addEventListener('resize', positionShortcutHints);
+  window.addEventListener('scroll', positionShortcutHints, true);
 
   /* ---------------- settings modal ---------------- */
   function openModal(){
