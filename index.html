@@ -362,7 +362,7 @@
   .msg-action-btn{display:inline-flex;align-items:center;gap:5px;margin-top:10px;margin-right:6px;background:none;border:1px solid var(--line);color:var(--text-faint);font-family:'Inter',sans-serif;font-size:11.5px;font-weight:500;padding:5px 10px;border-radius:14px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;opacity:0;}
   .msg.assistant:hover .msg-action-btn, .msg.user:hover .msg-action-btn{opacity:1;}
   .msg-action-btn:hover{color:var(--text-hi);border-color:var(--text-lo);background:var(--bg-1);}
-  .msg-action-btn.read-aloud-btn{opacity:1;}
+  .msg-action-btn.read-aloud-btn,.msg-action-btn.stop-reading-btn{opacity:1;}
   @media (max-width:880px){
     /* No hover on touch — keep action buttons visible so they're actually reachable */
     .msg-action-btn, .branch-new-btn{opacity:1;}
@@ -1328,6 +1328,30 @@
   function speechSupported(){
     return typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.speechSynthesis.speak === 'function' && typeof window.SpeechSynthesisUtterance === 'function';
   }
+  let preferredSpeechVoice = null;
+  function speechVoiceScore(voice){
+    const name = String(voice.name || '').toLowerCase();
+    const lang = String(voice.lang || '').toLowerCase();
+    let score = 0;
+    if (lang.startsWith('en-us')) score += 8;
+    else if (lang.startsWith('en')) score += 5;
+    if (/(natural|online|premium|enhanced|neural)/.test(name)) score += 20;
+    if (/(google us english|microsoft (aria|jenny|david|guy|mark|emma)|samantha|alex|daniel|karen|moira|tessa|allison|serena|ava|tom|fiona)/.test(name)) score += 10;
+    if (/(bells|bubbles|boing|bad news|deranged|good news|hysterical|organ|pipe|rogue|trinoids|whisper|wobble|zarvox|albert|jester|junior|grandma|grandpa)/.test(name)) score -= 30;
+    if (voice.default) score += 1;
+    return score;
+  }
+  function refreshSpeechVoice(){
+    if (!speechSupported() || typeof window.speechSynthesis.getVoices !== 'function') return;
+    const voices = window.speechSynthesis.getVoices();
+    const english = voices.filter(voice => /^en/i.test(String(voice.lang || '')));
+    const pool = english.length ? english : voices;
+    preferredSpeechVoice = pool.slice().sort((a, b) => speechVoiceScore(b) - speechVoiceScore(a))[0] || null;
+  }
+  if (speechSupported()) {
+    refreshSpeechVoice();
+    if (typeof window.speechSynthesis.addEventListener === 'function') window.speechSynthesis.addEventListener('voiceschanged', refreshSpeechVoice);
+  }
   function stopSpeaking(){
     speechRunId++;
     if (!speechSupported()) return;
@@ -1350,12 +1374,20 @@
   }
   function splitSpeechText(text, maxLength){
     const source = String(text || '').trim();
-    const limit = maxLength || 220;
+    const limit = maxLength || 420;
     const chunks = [];
+    const boundary = Math.floor(limit * .55);
     let remaining = source;
     while (remaining.length > limit) {
-      let cut = remaining.lastIndexOf(' ', limit);
-      if (cut < Math.floor(limit * .55)) cut = limit;
+      let sentenceCut = -1;
+      for (let i = Math.min(limit, remaining.length - 1); i > boundary; i--) {
+        if (/[.!?]/.test(remaining[i]) && /\s/.test(remaining[i + 1] || '')) {
+          sentenceCut = i + 1;
+          break;
+        }
+      }
+      let cut = sentenceCut > 0 ? sentenceCut : remaining.lastIndexOf(' ', limit);
+      if (cut < boundary) cut = limit;
       chunks.push(remaining.slice(0, cut).trim());
       remaining = remaining.slice(cut).trim();
     }
@@ -1364,6 +1396,7 @@
   }
   function speakResponse(raw){
     if (!speechSupported()) return;
+    refreshSpeechVoice();
     const text = cleanSpeechText(raw);
     if (!text) return;
     stopSpeaking();
@@ -1371,9 +1404,11 @@
     const chunks = splitSpeechText(text);
     chunks.forEach((chunk, index) => {
       const utterance = new window.SpeechSynthesisUtterance(chunk);
-      utterance.lang = document.documentElement.lang || navigator.language || 'en-US';
-      utterance.rate = 1;
+      if (preferredSpeechVoice) utterance.voice = preferredSpeechVoice;
+      utterance.lang = (preferredSpeechVoice && preferredSpeechVoice.lang) || document.documentElement.lang || navigator.language || 'en-US';
+      utterance.rate = .96;
       utterance.pitch = 1;
+      utterance.volume = 1;
       if (index === chunks.length - 1) {
         utterance.onend = () => { if (runId === speechRunId) speechRunId++; };
         utterance.onerror = () => { if (runId === speechRunId) speechRunId++; };
@@ -1869,6 +1904,7 @@
         addRegenerateButton(wrap, c, m.id);
         addCopyButton(wrap, m.content);
         addReadAloudButton(wrap, m.content);
+        addStopReadingButton(wrap);
         // branch button on assistant messages, to start a new branch from here
         addBranchButton(wrap, c, m.id);
       }
@@ -1959,6 +1995,14 @@
       if (!speechSupported()) { showToast('Read aloud is not supported by this browser', true); return; }
       speakResponse(text);
     });
+    wrap.querySelector('.bubble-wrap').appendChild(btn);
+  }
+
+  function addStopReadingButton(wrap){
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'msg-action-btn stop-reading-btn'; btn.title = 'Stop reading aloud'; btn.setAttribute('aria-label', 'Stop reading aloud');
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="6" y="6" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg> Stop';
+    btn.addEventListener('click', () => stopSpeaking());
     wrap.querySelector('.bubble-wrap').appendChild(btn);
   }
 
