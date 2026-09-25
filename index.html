@@ -389,7 +389,8 @@
   .empty-diagram{width:min(360px,84vw);height:120px;margin-bottom:10px;}
   .empty h2{font-family:'Inter',sans-serif;font-size:26px;font-weight:600;margin:2px 0 8px;letter-spacing:-.02em;}
   .empty p{margin:0;font-size:14px;color:var(--text-mid);max-width:380px;line-height:1.65;}
-  .random-topic{display:flex;flex-direction:column;align-items:center;gap:4px;width:min(420px,100%);margin-top:22px;padding:14px 18px;border:1px solid var(--line);border-radius:16px;background:var(--bg-1);color:var(--text-mid);font-family:'Inter',sans-serif;text-align:center;cursor:pointer;transition:border-color .15s,color .15s,background .15s,transform .15s;}
+  .random-topic-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:min(760px,100%);margin-top:22px;}
+  .random-topic{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:auto;min-width:0;min-height:96px;margin-top:0;padding:14px 18px;border:1px solid var(--line);border-radius:16px;background:var(--bg-1);color:var(--text-mid);font-family:'Inter',sans-serif;text-align:center;cursor:pointer;transition:border-color .15s,color .15s,background .15s,transform .15s;}
   .random-topic:hover{border-color:var(--text-lo);color:var(--text-hi);background:var(--bg-2);transform:translateY(-1px);}
   .random-topic-label{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);}
   .random-topic-name{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:15px;font-weight:600;line-height:1.4;color:var(--text-hi);}
@@ -407,7 +408,8 @@
     .empty h2{font-size:20px;margin:0 0 6px;}
     .empty p{font-size:13px;line-height:1.55;max-width:300px;}
     .empty p code.mono{word-break:break-all;}
-     .random-topic{margin-top:16px;padding:12px 14px;}
+     .random-topic-grid{grid-template-columns:1fr;gap:8px;margin-top:16px;}
+     .random-topic{min-height:0;padding:12px 14px;}
      .random-topic-name{font-size:14px;}
      .suggestions{margin-top:16px;gap:7px;max-width:100%;}
     .suggestions-secondary{margin-top:9px;}
@@ -787,11 +789,7 @@
           </svg>
           <h2 class="display">Nexus Chat</h2>
           <p>Start with a random topic from your library.</p>
-          <button class="random-topic" id="randomTopicBtn" type="button" aria-label="Start a random topic from the library">
-            <span class="random-topic-label">Random topic</span>
-            <span class="random-topic-name" id="randomTopicName">Loading a topic…</span>
-            <span class="random-topic-path" id="randomTopicPath"></span>
-          </button>
+          <div class="random-topic-grid" id="randomTopicGrid" aria-label="Random topics from the library"></div>
         </div>
       </div>
     </div>
@@ -1486,7 +1484,7 @@
     dualToggle: $('dualToggle'),
     modesToggle: $('modesToggle'), modesLabel: $('modesLabel'), modesCount: $('modesCount'), modesOverlay: $('modesOverlay'), modesClose: $('modesClose'),
     modesBody: $('modesBody'), modesClearBtn: $('modesClearBtn'), modesCancelBtn: $('modesCancelBtn'), modesSaveBtn: $('modesSaveBtn'),
-    topicsBtn: $('topicsBtn'), emptyTopicsChip: $('emptyTopicsChip'), randomTopicBtn: $('randomTopicBtn'), randomTopicName: $('randomTopicName'), randomTopicPath: $('randomTopicPath'),
+    topicsBtn: $('topicsBtn'), emptyTopicsChip: $('emptyTopicsChip'), randomTopicGrid: $('randomTopicGrid'),
     addBookInput: $('addBookInput'), addBookBtn: $('addBookBtn'), addBookStatus: $('addBookStatus'),
     topicsOverlay: $('topicsOverlay'), topicsClose: $('topicsClose'), topicsBody: $('topicsBody'),
     topicsSearchInput: $('topicsSearchInput'), topicsSearchClear: $('topicsSearchClear'),
@@ -1939,8 +1937,8 @@
   els.searchInput.addEventListener('input', renderConvoList);
 
   function renderRandomTopic(){
-    const btn = els.randomTopicBtn;
-    if (!btn) return;
+    const grid = els.randomTopicGrid;
+    if (!grid) return;
     const books = allBooks();
     const candidates = [];
     books.forEach((vol, bookIndex) => {
@@ -1948,16 +1946,34 @@
         (mod.topics || []).forEach((topic, topicIndex) => candidates.push({ vol, mod, bookIndex, moduleIndex, topicIndex, topic }));
       });
     });
-    if (!candidates.length) {
-      btn.style.display = 'none';
-      return;
+    grid.innerHTML = '';
+    if (!candidates.length) return;
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const swap = candidates[i];
+      candidates[i] = candidates[j];
+      candidates[j] = swap;
     }
-    btn.style.display = '';
-    const pick = candidates[Math.floor(Math.random() * candidates.length)];
-    els.randomTopicName.textContent = pick.topic;
-    els.randomTopicPath.textContent = pick.vol.title + ' · ' + pick.mod.title;
-    btn.title = 'Start with ' + pick.topic;
-    btn.onclick = () => selectTopic(pick.vol.title, 'Module ' + (pick.mod.num || pick.moduleIndex + 1) + ' — ' + pick.mod.title, pick.topic, pick.mod.topics, !!pick.vol.exam, makeTopicNav(pick.bookIndex, pick.vol, pick.mod, pick.moduleIndex, pick.topicIndex));
+    candidates.slice(0, Math.min(6, candidates.length)).forEach(pick => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'random-topic';
+      btn.title = 'Start with ' + pick.topic;
+      const label = document.createElement('span');
+      label.className = 'random-topic-label';
+      label.textContent = 'Random topic';
+      const name = document.createElement('span');
+      name.className = 'random-topic-name';
+      name.textContent = pick.topic;
+      const path = document.createElement('span');
+      path.className = 'random-topic-path';
+      path.textContent = pick.vol.title + ' · ' + pick.mod.title;
+      btn.appendChild(label);
+      btn.appendChild(name);
+      btn.appendChild(path);
+      btn.addEventListener('click', () => selectTopic(pick.vol.title, 'Module ' + (pick.mod.num || pick.moduleIndex + 1) + ' — ' + pick.mod.title, pick.topic, pick.mod.topics, !!pick.vol.exam, makeTopicNav(pick.bookIndex, pick.vol, pick.mod, pick.moduleIndex, pick.topicIndex)));
+      grid.appendChild(btn);
+    });
   }
 
   function renderThreadFromActive(){
