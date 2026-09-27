@@ -4527,8 +4527,20 @@
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
     hideInstallButton();
-    showToast('Nexus installed \u2014 you can now open it like any other app');
+    showToast('Nexus installed — you can now open it like any other app');
   });
+
+  // The service worker posts NEXUS_SW_ACTIVATED right after it takes control with a fresh
+  // cache. Only toast when the page was already controlled at load — i.e. this is an update,
+  // not the very first install of the worker.
+  if ('serviceWorker' in navigator) {
+    const wasControlledAtLoad = navigator.serviceWorker.controller != null;
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'NEXUS_SW_ACTIVATED' && wasControlledAtLoad) {
+        showToast('Nexus updated to the latest version');
+      }
+    });
+  }
 
   // iOS Safari never fires beforeinstallprompt (no programmatic install API exists there at all),
   // so show the button proactively there — clicking it just surfaces instructions for the manual
