@@ -989,6 +989,24 @@
           <label class="switch"><input type="checkbox" id="pulseToggle" checked><span class="switch-track"></span></label>
         </div>
         <div>
+          <div class="field-label">Read-aloud engine</div>
+          <p class="field-desc">Natural voice streams from TTS.ai (online, no key needed). System voice uses your device's built-in voices (offline).</p>
+          <select id="ttsEngineSelect" aria-label="Read-aloud engine" style="margin-top:8px;">
+            <option value="streamelements">Natural voice (TTS.ai)</option>
+            <option value="system">System voice (offline)</option>
+          </select>
+        </div>
+        <div id="ttsSeVoiceRow">
+          <div class="field-label">Natural voice</div>
+          <p class="field-desc">Pick the voice used for Read aloud when the natural engine is selected.</p>
+          <select id="ttsVoiceSelect" aria-label="TTS.ai voice" style="margin-top:8px;"></select>
+        </div>
+        <div id="ttsKeyRow">
+          <div class="field-label">TTS.ai API key (optional)</div>
+          <p class="field-desc">Without a key, the free anonymous tier applies (500 chars/request). Add a free TTS.ai key to unlock 5,000 chars/request. Stored only in this browser.</p>
+          <input type="password" id="ttsKeyInput" placeholder="sk-tts-..." style="margin-top:8px;">
+        </div>
+        <div id="ttsSystemVoiceRow" style="display:none;">
           <div class="field-label">Read-aloud voice</div>
           <p class="field-desc">Choose a natural installed voice for the Read aloud buttons, or let Nexus pick the best available one.</p>
           <select id="speechVoiceSelect" aria-label="Read-aloud voice" style="margin-top:8px;"></select>
@@ -1150,7 +1168,10 @@
     theme: LS.get('nexus_theme', 'ink'),
     compact: LS.get('nexus_compact', false),
     pulse: LS.get('nexus_pulse', true),
-    speechVoice: LS.get('nexus_speech_voice', '')
+    speechVoice: LS.get('nexus_speech_voice', ''),
+    ttsEngine: LS.get('nexus_tts_engine', 'streamelements'),
+    ttsVoice: LS.get('nexus_tts_voice', 'af_bella'),
+    ttsKey: LS.get('nexus_tts_key', '')
   };
   // Ensure both providers have a modelKeys bucket, even on a first run.
     if (!draft.modelKeys.nvidia) draft.modelKeys.nvidia = {};
@@ -1339,6 +1360,9 @@
     LS.set('nexus_compact', applied.compact);
     LS.set('nexus_pulse', applied.pulse);
     LS.set('nexus_speech_voice', applied.speechVoice);
+    LS.set('nexus_tts_engine', applied.ttsEngine);
+    LS.set('nexus_tts_voice', applied.ttsVoice);
+    LS.set('nexus_tts_key', applied.ttsKey);
   }
 
   let speechRunId = 0;
@@ -1400,8 +1424,82 @@
   }
   function stopSpeaking(){
     speechRunId++;
+    ttsStopAudio();
     if (!speechSupported()) return;
     try { window.speechSynthesis.cancel(); } catch {}
+  }
+
+  /* ---- TTS.ai natural voice: fetch each chunk as audio, play sequentially ---- */
+  const TTS_VOICES = [
+    { id: 'af_bella', name: 'Bella (American)' },
+    { id: 'af_nicole', name: 'Nicole (American)' },
+    { id: 'af_sarah', name: 'Sarah (American)' },
+    { id: 'af_sky', name: 'Sky (American)' },
+    { id: 'af_heart', name: 'Heart (American)' },
+    { id: 'am_adam', name: 'Adam (American)' },
+    { id: 'am_michael', name: 'Michael (American)' },
+    { id: 'bf_emma', name: 'Emma (British)' },
+    { id: 'bf_isabella', name: 'Isabella (British)' },
+    { id: 'bm_george', name: 'George (British)' },
+    { id: 'bm_lewis', name: 'Lewis (British)' }
+  ];
+  let ttsAudioQueue = [];
+  let ttsAudioCurrent = null;
+  function ttsStopAudio(){
+    ttsAudioQueue = [];
+    if (ttsAudioCurrent) {
+      ttsAudioCurrent.pause();
+      ttsAudioCurrent.src = '';
+      ttsAudioCurrent = null;
+    }
+  }
+  async function ttsSpeakChunks(chunks, voice){
+    ttsStopAudio();
+    const runId = speechRunId;
+    for (const chunk of chunks) {
+      if (runId !== speechRunId) return;
+      try {
+        const res = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: chunk, voice, key: applied.ttsKey || '' })
+        });
+        if (!res.ok) throw new Error('tts failed');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        await new Promise((resolve) => {
+          if (runId !== speechRunId) return resolve();
+          const audio = new Audio(url);
+          ttsAudioCurrent = audio;
+          audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+          audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+          audio.play().catch(() => { URL.revokeObjectURL(url); resolve(); });
+        });
+        ttsAudioCurrent = null;
+      } catch {
+        // Network or service failure — fall back to system voice for the remaining chunks.
+        const remaining = chunks.slice(chunks.indexOf(chunk));
+        speakWithSystemVoice(remaining);
+        return;
+      }
+    }
+  }
+  function speakWithSystemVoice(chunks){
+    if (!speechSupported()) return;
+    refreshSpeechVoice();
+    chunks.forEach((chunk, index) => {
+      const utterance = new window.SpeechSynthesisUtterance(chunk);
+      if (preferredSpeechVoice) utterance.voice = preferredSpeechVoice;
+      utterance.lang = (preferredSpeechVoice && preferredSpeechVoice.lang) || document.documentElement.lang || navigator.language || 'en-US';
+      utterance.rate = .96;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      if (index === chunks.length - 1) {
+        utterance.onend = () => { if (runId === speechRunId) speechRunId++; };
+        utterance.onerror = () => { if (runId === speechRunId) speechRunId++; };
+      }
+      try { window.speechSynthesis.speak(utterance); } catch {}
+    });
   }
   function cleanSpeechText(raw){
     let text = String(raw || '');
@@ -1441,26 +1539,15 @@
     return chunks;
   }
   function speakResponse(raw){
-    if (!speechSupported()) return;
-    refreshSpeechVoice();
     const text = cleanSpeechText(raw);
     if (!text) return;
     stopSpeaking();
-    const runId = speechRunId;
     const chunks = splitSpeechText(text);
-    chunks.forEach((chunk, index) => {
-      const utterance = new window.SpeechSynthesisUtterance(chunk);
-      if (preferredSpeechVoice) utterance.voice = preferredSpeechVoice;
-      utterance.lang = (preferredSpeechVoice && preferredSpeechVoice.lang) || document.documentElement.lang || navigator.language || 'en-US';
-      utterance.rate = .96;
-      utterance.pitch = 1;
-      utterance.volume = 1;
-      if (index === chunks.length - 1) {
-        utterance.onend = () => { if (runId === speechRunId) speechRunId++; };
-        utterance.onerror = () => { if (runId === speechRunId) speechRunId++; };
-      }
-      try { window.speechSynthesis.speak(utterance); } catch {}
-    });
+    if (applied.ttsEngine === 'streamelements') {
+      ttsSpeakChunks(chunks, applied.ttsVoice || 'af_bella');
+    } else {
+      speakWithSystemVoice(chunks);
+    }
   }
   function speechTextFromSelection(bubble){
     if (!bubble || typeof window.getSelection !== 'function') return '';
@@ -1508,6 +1595,7 @@
     fetchModelsBtn: $('fetchModelsBtn'), fetchModelsStatus: $('fetchModelsStatus'),
     systemPrompt: $('systemPrompt'), promptChips: $('promptChips'), newPromptInput: $('newPromptInput'), addPromptBtn: $('addPromptBtn'),
     themeInk: $('themeInk'), themeGraphite: $('themeGraphite'), compactToggle: $('compactToggle'), pulseToggle: $('pulseToggle'), speechVoiceSelect: $('speechVoiceSelect'),
+    ttsEngineSelect: $('ttsEngineSelect'), ttsVoiceSelect: $('ttsVoiceSelect'), ttsSeVoiceRow: $('ttsSeVoiceRow'), ttsSystemVoiceRow: $('ttsSystemVoiceRow'), ttsKeyInput: $('ttsKeyInput'),
     statConvos: $('statConvos'), statMsgs: $('statMsgs'),
     clearConvosBtn: $('clearConvosBtn'), resetAllBtn: $('resetAllBtn')
   };
@@ -4417,6 +4505,30 @@
   els.compactToggle.addEventListener('change', () => { draft.compact = els.compactToggle.checked; });
   els.pulseToggle.addEventListener('change', () => { draft.pulse = els.pulseToggle.checked; });
   els.speechVoiceSelect.addEventListener('change', () => { draft.speechVoice = els.speechVoiceSelect.value; refreshSpeechVoice(draft.speechVoice); });
+  els.ttsEngineSelect.addEventListener('change', () => {
+    draft.ttsEngine = els.ttsEngineSelect.value;
+    syncTtsVoiceRows();
+  });
+  els.ttsVoiceSelect.addEventListener('change', () => { draft.ttsVoice = els.ttsVoiceSelect.value; });
+  els.ttsKeyInput.addEventListener('input', () => { draft.ttsKey = els.ttsKeyInput.value.trim(); });
+  function syncTtsVoiceRows(){
+    const se = draft.ttsEngine === 'streamelements';
+    if (els.ttsSeVoiceRow) els.ttsSeVoiceRow.style.display = se ? '' : 'none';
+    if (els.ttsSystemVoiceRow) els.ttsSystemVoiceRow.style.display = se ? 'none' : '';
+  }
+  function populateTtsVoiceSelect(){
+    const select = els.ttsVoiceSelect;
+    if (!select) return;
+    select.innerHTML = '';
+    const current = (typeof draft !== 'undefined' && draft.ttsVoice) || 'af_bella';
+    TTS_VOICES.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.id;
+      opt.textContent = v.name;
+      if (v.id === current) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
 
   els.clearConvosBtn.addEventListener('click', () => {
     if (!confirm('Delete all conversations? This cannot be undone.')) return;
@@ -4460,6 +4572,10 @@
     els.compactToggle.checked = draft.compact;
     els.pulseToggle.checked = draft.pulse;
     populateSpeechVoiceSelect();
+    if (els.ttsEngineSelect) els.ttsEngineSelect.value = draft.ttsEngine || 'streamelements';
+    populateTtsVoiceSelect();
+    if (els.ttsKeyInput) els.ttsKeyInput.value = draft.ttsKey || '';
+    syncTtsVoiceRows();
     updateDataStats();
     els.modalSave.dataset.provider = draft.provider;
     if (!freeModelsFetched) fetchFreeModels(); // kick off a background refresh the first time Settings opens
