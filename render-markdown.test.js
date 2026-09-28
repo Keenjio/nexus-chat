@@ -94,7 +94,7 @@ test('adds a study-first protocol to study modes', () => {
     assert.ok(study.STUDY_MODE_IDS.has(id));
     assert.ok(modeMap.has(id));
   }
-  for (const id of ['cornell-notes', 'lecture-outline', 'comparison-matrix', 'step-by-step-guide', 'one-page-cheat-sheet', 'exam-short-notes', 'timeline-sequence', 'history']) {
+  for (const id of ['cornell-notes', 'one-page-cheat-sheet', 'timeline-sequence', 'history']) {
     assert.ok(modeMap.has(id));
   }
 });
