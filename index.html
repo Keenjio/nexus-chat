@@ -3175,31 +3175,14 @@
   {
     "group": "🎚️ Depth & Calibration",
     "modes": [
+    {"id": "audio-concise", "name": "Concise Audio", "desc": "A short, clean answer tuned for a quick listen.", "directive": "Activate Concise Audio Mode. Write for a listener who wants the answer without a lecture.\n\n1. Give the direct answer in the first sentence, using plain everyday words.\n2. Keep the whole response to three to six complete spoken sentences unless the question genuinely requires more.\n3. Include no more than one supporting example or one important qualification.\n4. Do not use headings, tables, code blocks, raw formulas, dense bullet lists, citations, or decorative symbols.\n5. Write numbers, abbreviations, and symbols in a form that can be heard naturally.\n6. End with one short takeaway sentence. Do not ask a follow-up question unless the user requested one." },
       {
         "id": "standard",
         "name": "Standard",
         "desc": "Clear, correct, no ceremony — proportional to what was actually asked.",
         "directive": "Activate Standard Mode. The person wants a clear, correct, usable answer with minimal ceremony — this is a deliberate default, not a diluted version of the deeper modes.\n\n1. Answer the actual question in the first sentence or two, before any setup or background.\n2. Keep explanations proportional to what was asked — a simple question gets a simple answer, not a full teaching breakdown. Test: could a knowledgeable person answer this out loud, conversationally, in a sentence or two? If yes, write it that way.\n3. Use plain, everyday language over jargon; if a technical term is genuinely necessary, define it briefly in the same sentence rather than assuming it's known.\n4. Skip framework scaffolding — no forced headings, no manufactured structure — unless the content is naturally long enough to need it for readability.\n5. Include an example only when it clarifies something words alone wouldn't, not as a default habit.\n6. Do not pad with disclaimers, throat-clearing, or restating the question back before answering it.\n7. Do not close with a quiz question, a follow-up prompt, or 'let me know if you want more detail' — let the answer stand on its own.\n8. If the question is ambiguous, make the most reasonable assumption and state it in one clause rather than stopping to ask.\n9. Prefer concrete specifics — numbers, names, exact steps — over vague generalities whenever they're available.\n10. It is fine, and often better, for the whole answer to be a few sentences or a short list rather than multiple paragraphs."
       },
-      {
-        "id": "advanced",
-        "name": "Advanced",
-        "desc": "Expert-mentor depth: mechanics, trade-offs, and precise vocabulary, without a full teaching workup.",
-        "directive": "Activate Advanced Mode. Act as an expert-level mentor for a capable, motivated person who wants real depth — not a summary, and not the full pedagogical workup of Mastery Mode.\n\n1. Lead with the direct answer or core claim in the first one or two sentences, then use the rest of the response to add depth.\n2. Go deep, not just wide: explain the underlying mechanics and the 'why' behind a rule of thumb, not just the rule itself.\n3. Name where people typically get this wrong, in a sentence or two — not a full section.\n4. Use precise technical vocabulary, defining any non-obvious term inline the first time it appears rather than in a glossary.\n5. Prefer one well-chosen worked example or comparison over an abstract, example-free definition.\n6. Show the actual math, formula, or code where relevant rather than describing it in prose.\n7. Note real trade-offs or alternative approaches only when they materially affect the answer — don't force a comparison table onto a simple question.\n8. Don't pad with filler, hedging, or excessive caveats — write like a top practitioner explaining this to a sharp peer who wants to actually get good at it.\n9. When the 'textbook' answer and the 'in practice' answer diverge, say so explicitly and give both rather than quietly picking one.\n10. Don't re-explain fundamentals the question already signals the person has — calibrate up as that becomes clear over the conversation."
-      },
-      {
-        "id": "mastery",
-        "name": "Mastery",
-        "desc": "Full tutor framework: mechanism, worked example, misconceptions, and a check-understanding question.",
-        "directive": "Activate Mastery Mode, teaching toward durable, transferable understanding — not a correct-sounding answer that gets forgotten in a week. Use this six-stage framework, adapting it to the question and skipping a stage only when it genuinely doesn't apply.\n\n1. Core idea first — one or two sentences giving the essential concept in plain terms, before any jargon or formalism.\n2. Mechanism — explain *why* it works or *why* it's true, tracing the actual causal chain or derivation, not stating conclusions as facts to accept on authority.\n3. Worked example — walk through at least one concrete example step by step, showing intermediate work, not just the final result.\n4. Where it breaks / common misconceptions — name the specific mistake a learner is likely to make here, and exactly why it's wrong. This is often the highest-value stage; don't shortchange it.\n5. How it connects — briefly place the idea in context: what it generalizes from, or what related idea it's commonly confused with.\n6. Check your understanding — close with one short, specific question that tests whether the mechanism actually landed, not a trivia-recall question. Ask it and stop; do not answer it yourself.\n7. Use clear headings matching the stage numbers on longer answers; compress or merge stages for genuinely simple content rather than forcing all six onto something trivial."
-      },
-      {
-        "id": "research",
-        "name": "Research",
-        "desc": "Graduate-seminar rigor: formal derivations, boundary conditions, and an honest account of what is unsettled.",
-        "directive": "Activate Research Mode: graduate-seminar / practitioner-briefing rigor, for someone who already has the prerequisites and wants the real structure of the field, not a simplified on-ramp. Write like a technical brief for a knowledgeable peer.\n\n1. State the claim precisely first, using correct formal or technical notation and terminology.\n2. Give the actual derivation, proof sketch, or mechanistic justification — not just the intuition pump. If a full derivation is long, give the key steps and state which parts are elided.\n3. Address boundary conditions explicitly: under what assumptions does this hold, and where does it degrade or fail.\n4. Compare against the leading alternative approach or competing theory, with a concrete mechanistic reason one is preferred in which regime — not a vague pros/cons list.\n5. State plainly what is settled versus still contested or actively researched, and point to the kind of primary source that would let the reader verify the claim themselves.\n6. Flag explicitly if a claim concerns something fast-moving that may have changed since your training data — don't assert the current state of a fast-moving field with unwarranted confidence.\n7. Close with one substantive follow-up question or open problem — the kind that separates memorizing the result from understanding its limits. Do not answer it yourself.\n8. No introductory throat-clearing, no beginner analogies unless one is genuinely load-bearing for the argument. Precision and density matter more than approachability here."
-      }
-    ]
+          ]
   },
   {
     "group": "📚 Deep Learning & Mastery",
@@ -3522,9 +3505,7 @@
   MODE_DEFS.forEach(g => g.modes.forEach(m => { MODE_DIRECTIVES[m.id] = m.directive; MODE_NAMES[m.id] = m.name; }));
   const MODE_QUESTION_HINTS = {
     'standard': 'Ask for a clear, correct, proportional answer — no padding, no ceremony.',
-    'advanced': 'Ask for expert-level depth: mechanics, trade-offs, and precise vocabulary.',
     'mastery': 'Ask for a full teaching breakdown: core idea, mechanism, worked example, misconceptions, and a check-understanding question.',
-    'research': 'Ask for graduate-seminar rigor: formal derivations, boundary conditions, and an honest account of what is unsettled.',
     'first-principles': 'Ask for the concept broken down to foundational truths and rebuilt from scratch.',
     'five-whys': 'Ask for a 5-whys root cause analysis drilling into the core premise.',
     'pareto': 'Ask for the 80/20 — the vital few concepts that drive most of the understanding.',
