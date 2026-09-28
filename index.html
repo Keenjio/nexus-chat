@@ -3302,6 +3302,77 @@
   const MODE_DIRECTIVES = {};
   const MODE_NAMES = {};
   MODE_DEFS.forEach(g => g.modes.forEach(m => { MODE_DIRECTIVES[m.id] = m.directive; MODE_NAMES[m.id] = m.name; }));
+  const MODE_QUESTION_HINTS = {
+    'standard': 'Ask for a clear, correct, proportional answer — no padding, no ceremony.',
+    'advanced': 'Ask for expert-level depth: mechanics, trade-offs, and precise vocabulary.',
+    'mastery': 'Ask for a full teaching breakdown: core idea, mechanism, worked example, misconceptions, and a check-understanding question.',
+    'research': 'Ask for graduate-seminar rigor: formal derivations, boundary conditions, and an honest account of what is unsettled.',
+    'first-principles': 'Ask for the concept broken down to foundational truths and rebuilt from scratch.',
+    'feynman': 'Ask for the concept explained as if to a curious novice who pushes back on jargon.',
+    'five-whys': 'Ask for a 5-whys root cause analysis drilling into the core premise.',
+    'analogy-engine': 'Ask for the concept explained through one sustained real-world analogy.',
+    'edge-case': 'Ask about edge cases, exceptions, limitations, and real historical failures.',
+    'steel-man': 'Ask for the strongest, most rigorous, most charitable case for the position.',
+    'polymath': 'Ask for cross-disciplinary parallels mapping the concept onto an unrelated field.',
+    'pareto': 'Ask for the 80/20 — the vital few concepts that drive most of the understanding.',
+    'deep-research': 'Ask for a systematic, heavily-structured synthesis with explicit confidence flags.',
+    'history': 'Ask for the historical development: origins, turning points, debates, and legacy.',
+    'chain-of-thought': 'Ask for step-by-step reasoning shown explicitly before the final answer.',
+    'devils-advocate': 'Ask for active critique hunting for logical fallacies and risks.',
+    'red-team': 'Ask for adversarial analysis of how the idea could be broken or exploited.',
+    'probabilistic': 'Ask for claims framed with explicit, appropriately-precise confidence levels.',
+    'listening-section': 'Ask for a spoken-first briefing written for natural read-aloud delivery.',
+    'audio-concise': 'Ask for a short, clean answer tuned for a quick listen.',
+    'audio-conversational': 'Ask for a warm, natural narration that feels like a tutor talking with you.',
+    'audio-exam-notes': 'Ask for high-yield facts, distinctions, and traps spoken for revision.',
+    'audio-step-by-step': 'Ask for a procedure delivered one clear spoken step at a time.',
+    'brain-dump': 'Ask for informal, shorthand notes with bullets, arrows, and casual phrasing.',
+    'zettelkasten': 'Ask for atomic, tagged, bidirectionally-linked notes for a personal knowledge base.',
+    'bluf': 'Ask for a bottom-line-up-front executive summary with 3-5 crisp bullets.',
+    'cornell-notes': 'Ask for Cornell-style notes with recall cues, detailed notes, and a summary.',
+    'lecture-outline': 'Ask for a hierarchical, scan-friendly outline with one idea per bullet.',
+    'comparison-matrix': 'Ask for a comparison across clear dimensions and use cases.',
+    'step-by-step-guide': 'Ask for an executable checklist with inputs, checkpoints, and outputs.',
+    'one-page-cheat-sheet': 'Ask for a compact, high-yield reference built for quick review.',
+    'exam-short-notes': 'Ask for high-yield exam notes with likely traps and recall prompts.',
+    'timeline-sequence': 'Ask for events or stages organized in chronological or causal order.',
+    'ascii-diagram': 'Ask for a visual ASCII diagram showing the concept\'s structure, flow, or relationships, followed by a brief explanation.',
+    'two-column': 'Ask for a two-column breakdown pairing technical concept with plain-English meaning.',
+    'qa-interview': 'Ask for the topic explained as a natural question-and-answer dialogue.',
+    'progressive-disclosure': 'Ask for the topic explained in layers of increasing depth.',
+    'argument-map': 'Ask for a visual map of claims, evidence, and counterarguments.',
+    'before-after': 'Ask for a before-and-after comparison showing what changes with understanding.',
+    'story-mode': 'Ask for the concept explained through a short narrative with characters and a situation.',
+    'eli5': 'Ask for a simple, jargon-free explanation using one concrete scenario.',
+    'socratic': 'Ask for a Socratic dialogue with one guiding question at a time.',
+    'terse': 'Ask for the fewest words that still fully and correctly answer the question.',
+    'show-work': 'Ask for the full calculation, reasoning, or basis behind every derived claim.',
+    'sticky': 'Ask for short, scannable sticky notes instead of prose.',
+    'practice-problems': 'Ask for practice problems to test understanding — without solutions or hints.',
+    'formula-deep-dive': 'Ask for a deep dive into the formulas, derivations, and calculations.',
+    'worked-solutions': 'Ask for fully worked solutions to example problems with every step shown.',
+    'answer-check': 'Ask to check submitted work, diagnose errors, and give targeted repairs.',
+    'concept-map': 'Ask for a concept map showing how the ideas and sub-concepts relate.',
+    'guided-reading': 'Ask for a guided reading session that teaches in dependency order.',
+    'flashcards': 'Ask to be quizzed with flashcards covering the key concepts and distinctions.',
+    'adaptive-difficulty': 'Ask for questions that adapt to the learner\'s demonstrated level.',
+    'dependency-map': 'Ask for a map of concept dependencies and prerequisites.',
+    'glossary': 'Ask for a glossary of key terms with precise definitions.',
+    'formula-sheet': 'Ask for a formula sheet summarizing all relevant formulas and when to use each.',
+    'case-study': 'Ask for a case study applying the concept to a realistic scenario.',
+    'socratic-reading': 'Ask for a Socratic reading session that builds understanding through questions.',
+    'cfa-mode': 'Ask for CFA exam-style questions, explanations, and trap analysis.',
+    'cfa-formula-navigator': 'Ask for CFA formula navigation, application, and common calculation traps.',
+    'cfa-comparison': 'Ask for CFA-style side-by-side comparison of related concepts.',
+    'cfa-calc-walkthrough': 'Ask for step-by-step CFA calculation walkthroughs with real numbers.',
+    'cfa-concept-distiller': 'Ask for distilled CFA concepts focused on what the exam actually tests.',
+    'cfa-mock-vignette': 'Ask for CFA mock exam vignettes with answer explanations.',
+    'cfa-distractor-analyzer': 'Ask for analysis of CFA distractor answers and why they are wrong.',
+    'cfa-topic-connector': 'Ask how this topic connects to and blends with other CFA topics.'
+  };
+  function buildModeQuestionHint(modeId){
+    return MODE_QUESTION_HINTS[modeId] || '';
+  }
   const STUDY_MODE_IDS = new Set(['practice-problems', 'formula-deep-dive', 'worked-solutions', 'answer-check', 'concept-map', 'cfa-mode', 'cfa-formula-navigator', 'cfa-comparison', 'cfa-calc-walkthrough', 'cfa-concept-distiller', 'cfa-mock-vignette', 'cfa-distractor-analyzer', 'cfa-topic-connector', 'guided-reading', 'flashcards', 'adaptive-difficulty', 'dependency-map', 'glossary', 'formula-sheet', 'case-study', 'socratic-reading', 'ascii-diagram', 'two-column', 'qa-interview', 'progressive-disclosure', 'argument-map', 'before-after', 'story-mode']);
   const STUDY_READING_DIRECTIVE = "Apply a study-first reading protocol to this response. The goal is durable understanding and usable retrieval, not merely a complete-looking answer.\n\n1. Begin with a one-sentence learning objective: what the reader should be able to explain, distinguish, calculate, or apply after reading.\n2. Identify only the prerequisites needed to follow the topic. Briefly bridge them, and do not reteach prerequisites the conversation shows are already mastered.\n3. Teach in dependency order: plain-language core idea -> mechanism or reasoning -> key terms and formulas -> one concrete worked example or application -> contrasts, edge cases, and common mistakes. Use short paragraphs, descriptive headings, and a small table only when comparison is genuinely clearer.\n4. Keep the main path focused. Put useful secondary detail under a clearly labeled 'Deeper notes' or 'Nuances' section instead of interrupting the central explanation.\n5. Make important distinctions explicit, especially between similar terms, formulas, or cases, and say why the distinction matters.\n6. Connect the topic to neighboring ideas or earlier conversation context when relevant, without adding unrelated background.\n7. End with one precise retrieval question that requires explaining or applying the mechanism rather than repeating a definition. Do not answer it unless the active mode explicitly calls for solutions or the reader asks for the answer.\n8. Be honest about uncertainty and source limits: do not invent facts, examples, citations, exam weights, or claims that depend on unavailable context.\n9. Match depth to the request; a narrow question does not need a textbook chapter.\n\nIf another active mode imposes a conflicting output contract, follow that mode's format and preserve these learning goals wherever they do not conflict.";
   function buildStudyReadingDirective(activeModes, force){
@@ -3557,17 +3628,20 @@
   // the way the concept is actually tested, not just a general explanation of it.
   const TOPIC_PROMPT_WRITER_SYSTEM_EXAM = "You write a single, well-formed exam-prep study question for a tutoring AI to answer next. You will be given an official Learning Outcome Statement (LOS) from a professional finance credential's curriculum, the topic area/module it belongs to, and sibling LOSs from the same module for context.\n\nWrite a question that asks the tutor to teach this exact LOS the way the exam tests it: honor the LOS's command verb precisely (\"calculate and interpret\" must ask for an actual worked numeric example, not just an explanation; \"compare\" must ask for an explicit side-by-side; \"describe\"/\"explain\" must ask for the full reasoning), state the prerequisite ideas needed, identify the classic trap answers and the distinction the exam most often probes, connect the LOS to neighboring LOSs, and end with one retrieval question that tests application or interpretation rather than term recognition.\n\nOutput ONLY the question itself, written as if the person is asking it directly (first person, e.g. \"Explain \u2026\" or \"Walk me through \u2026, and how is this typically tested?\"). No preamble, no meta-commentary, no quotation marks around the whole thing, no markdown. One paragraph.";
 
-  async function generateTopicPrompt(volTitle, modTitle, topic, siblingTopics, isExam){
+  async function generateTopicPrompt(volTitle, modTitle, topic, siblingTopics, isExam, activeModeId){
     const provider = applied.provider;
     const model = applied.activeModel[provider] || DEFAULT_MODELS[provider];
     const apiKey = resolveApiKey(applied, provider, model);
     const siblings = (siblingTopics || []).filter(t => t !== topic);
     const userContent = (isExam ? 'Learning Outcome Statement (LOS): "' : 'Topic: "') + topic + '"\nVolume: ' + volTitle + '\nModule: ' + modTitle +
       (siblings.length ? ('\nOther ' + (isExam ? 'LOSs' : 'topics') + ' in this module: ' + siblings.join(', ')) : '');
+    const modeHint = buildModeQuestionHint(activeModeId);
+    const systemPrompt = (isExam ? TOPIC_PROMPT_WRITER_SYSTEM_EXAM : TOPIC_PROMPT_WRITER_SYSTEM) +
+      (modeHint ? '\n\nThe person has "' + MODE_NAMES[activeModeId] + '" mode active. ' + modeHint : '');
 
     const r = await postChatWithFallback(provider, model, apiKey, {
       messages: [
-        { role: 'system', content: isExam ? TOPIC_PROMPT_WRITER_SYSTEM_EXAM : TOPIC_PROMPT_WRITER_SYSTEM },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent }
       ]
     },
@@ -3786,7 +3860,7 @@
   // request, capped/cleaned sibling list, exam-aware phrasing) rather than one blunt templated
   // sentence, since the person may choose to send it as-is rather than wait on a retry, and a weak
   // fallback would silently produce a worse answer with no obvious cause.
-  function buildFallbackTopicQuestion(volTitle, modTitle, topic, siblingTopics, isExam){
+  function buildFallbackTopicQuestion(volTitle, modTitle, topic, siblingTopics, isExam, activeModeId){
     const siblings = (siblingTopics || []).filter(t => t !== topic);
     // Cap how many sibling topics get quoted — a full 10+ item module dumped in raw is exactly the
     // run-on, hard-to-read style this function exists to avoid. A handful of named examples gives
@@ -3802,6 +3876,9 @@
         (extraCount > 0 ? ', and ' + extraCount + ' more' : '') + '.';
     }
 
+    const modeHint = buildModeQuestionHint(activeModeId);
+    const modeLine = modeHint ? '\nFormat: ' + MODE_NAMES[activeModeId] + ' mode is active \u2014 ' + modeHint : '';
+
     if (isExam) {
       return 'Teach me "' + topic + '" from ' + volTitle + ' \u2192 ' + modTitle + ', at the level of depth I\u2019ll need for the actual CFA exam. Please cover:\n' +
         '- A precise definition using the exact terminology the exam uses\n' +
@@ -3809,14 +3886,14 @@
         '- A full worked numerical example if this LOS is even partly quantitative\n' +
         '- How this specific LOS tends to be tested, including common trap answers\n' +
         '- How it connects to the other LOSs in this same module' +
-        siblingLine;
+        siblingLine + modeLine;
     }
     return 'Give me a detailed, in-depth explanation of "' + topic + '" from ' + volTitle + ' \u2192 ' + modTitle + '. Please cover:\n' +
       '- A clear, plain-language definition of the concept\n' +
       '- The underlying mechanics or reasoning behind it, not just a restatement\n' +
       '- Any key formulas, figures, or provisions involved, with a worked example if it\u2019s quantitative or procedural\n' +
-      '- How this connects to the other topics in the same module' +
-      siblingLine;
+      '- How this connects to the other topics in this same module' +
+      siblingLine + modeLine;
   }
 
   async function selectTopic(volTitle, modTitle, topic, siblingTopics, isExam, navContext){
@@ -3840,16 +3917,17 @@
     // (e.g. the CFA outline) and should get the exam-specific tutoring directive rather than the
     // generic one. Stripped back off before display so it never shows in the chat bubble or input.
     const EXAM_MARKER = '\u200b\u200bexam\u200b\u200b';
+    const activeModeId = getActiveModes(getActive())[0] || '';
     try {
       let generatedPrompt;
       try {
-        generatedPrompt = await generateTopicPrompt(volTitle, modTitle, topic, siblingTopics, isExam);
+        generatedPrompt = await generateTopicPrompt(volTitle, modTitle, topic, siblingTopics, isExam, activeModeId);
       } catch (firstErr) {
         // Most failures here are transient (a brief network hiccup, a momentary rate limit) — retry
         // once automatically before giving up, rather than dropping straight to the plain-template
         // fallback on the very first failure.
         showToast('That didn\u2019t work, retrying\u2026', true);
-        generatedPrompt = await generateTopicPrompt(volTitle, modTitle, topic, siblingTopics, isExam);
+        generatedPrompt = await generateTopicPrompt(volTitle, modTitle, topic, siblingTopics, isExam, activeModeId);
       }
       els.messageInput.value = generatedPrompt + (isExam ? EXAM_MARKER : '');
       els.messageInput.dispatchEvent(new Event('input'));
@@ -3861,7 +3939,7 @@
       // explaining what happened and offering a real retry — so a real problem (e.g. no API key
       // configured) is visible and fixable, AND the fallback itself is still genuinely good to send
       // as-is if the person doesn't want to wait on a retry.
-      const fallbackText = buildFallbackTopicQuestion(volTitle, modTitle, topic, siblingTopics, isExam);
+      const fallbackText = buildFallbackTopicQuestion(volTitle, modTitle, topic, siblingTopics, isExam, activeModeId);
       els.messageInput.value = fallbackText;
       els.messageInput.dispatchEvent(new Event('input'));
       showTopicGenError(err.message, () => selectTopic(volTitle, modTitle, topic, siblingTopics, isExam, navContext));
