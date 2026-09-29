@@ -1602,6 +1602,46 @@
     clearConvosBtn: $('clearConvosBtn'), resetAllBtn: $('resetAllBtn')
   };
 
+  /* ---------------- mobile/tablet keyboard suppression ----------------
+     A phone or tablet pops up its on-screen keyboard the instant any <input>/<textarea> takes
+     focus, and that keyboard eats roughly half the screen. Because the app focuses the composer
+     automatically in a dozen places (new chat, after a reply lands, opening a panel, applying a
+     mode), the keyboard would repeatedly cover the content the person just asked for.
+
+     The fix is to skip *programmatic* focus on touch-primary devices only, and only where the
+     person did not just ask to type. Deliberate intent is preserved: tapping the composer itself
+     is a real user gesture, so the browser focuses it and shows the keyboard as normal, and the
+     two genuinely-typing flows — editing a message and correcting an empty Add Book title — keep
+     their explicit focus. On desktop, isTouchPrimary() is false and every call behaves exactly as
+     it did before, so pointer focus, caret placement, and scroll-into-view are untouched.
+
+     The check is `(pointer: coarse)`, which describes the *primary* input device. That is
+     deliberately what we want: a touchscreen laptop still has a trackpad as its primary pointer, so
+     it reports fine and keeps the normal desktop behavior instead of losing its keyboard because
+     it happens to have a digitizer attached. maxTouchPoints is only a fallback for engines with no
+     matchMedia. */
+  const COARSE_POINTER_QUERY = (window.matchMedia && typeof window.matchMedia === 'function')
+    ? window.matchMedia('(pointer: coarse)') : null;
+  function isTouchPrimary(){
+    if (COARSE_POINTER_QUERY) return !!COARSE_POINTER_QUERY.matches;
+    return (navigator.maxTouchPoints || 0) > 0;
+  }
+  // Focus only when it won't hijack a mobile screen. Delay is for the existing setTimeout-based
+  // call sites (panels/overlays that animate in before their input is ready).
+  function focusIfKeyboardAllowed(el, delay){
+    if (!el || isTouchPrimary()) return;
+    if (delay) setTimeout(() => el.focus(), delay);
+    else el.focus();
+  }
+  // Overlay/panel transitions on touch devices can otherwise leave an already-focused input behind
+  // (e.g. the side chat was mid-typing when a panel swapped in), stranding the keyboard on top of
+  // the panel that just opened. Blur it so the new surface starts from a clean, keyboard-free state.
+  function dismissKeyboardOnTouch(){
+    if (!isTouchPrimary()) return;
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) active.blur();
+  }
+
   /* ---------------- markdown + latex rendering ---------------- */
   function escapeHtml(str){ return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
   function isEscapedAt(text, index){
@@ -2030,7 +2070,7 @@
     syncTopbar();
     syncModesToggle();
     syncDualToggle();
-    els.messageInput.focus();
+    focusIfKeyboardAllowed(els.messageInput);
     closeMenuDropdown();
   });
   els.searchInput.addEventListener('input', renderConvoList);
@@ -2303,7 +2343,7 @@
     convo.activeLeaf = fromMsgId;
     persistAll();
     renderThreadFromActive();
-    els.messageInput.focus();
+    focusIfKeyboardAllowed(els.messageInput);
     showToast('New branch started — send a message to continue it');
   }
 
@@ -2662,7 +2702,7 @@
     }
     persistAll();
     syncDualToggle();
-    if (c.sideOpen && els.sideMessageInput) setTimeout(() => els.sideMessageInput.focus(), 180);
+    if (c.sideOpen && els.sideMessageInput) focusIfKeyboardAllowed(els.sideMessageInput, 180);
   }
   if (els.dualToggle) els.dualToggle.addEventListener('click', () => toggleSidePanel());
   if (els.sideCloseBtn) els.sideCloseBtn.addEventListener('click', () => toggleSidePanel(false));
@@ -2710,7 +2750,7 @@
     els.notesPanel.classList.toggle('open', willOpen);
     if (els.notesToggle) els.notesToggle.classList.toggle('on', willOpen);
     syncNotesToggle();
-    if (willOpen) { renderNotesList(); setTimeout(() => els.notesNewInput && els.notesNewInput.focus(), 180); }
+    if (willOpen) { renderNotesList(); focusIfKeyboardAllowed(els.notesNewInput, 180); }
   }
   els.notesToggle && els.notesToggle.addEventListener('click', () => toggleNotesPanel());
   els.notesCloseBtn && els.notesCloseBtn.addEventListener('click', () => toggleNotesPanel(false));
@@ -2854,6 +2894,7 @@
     convo.sideMessages.push({ id: uid(), role: 'user', content: text });
     els.sideMessageInput.value = '';
     els.sideMessageInput.style.height = 'auto';
+    dismissKeyboardOnTouch();
     persistAll();
     renderSideThread();
 
@@ -2866,7 +2907,7 @@
     await runSideRequest(convo, text, pendingEl, 0);
     sideBusy = false;
     els.sideSendBtn.disabled = false;
-    els.sideMessageInput.focus();
+    focusIfKeyboardAllowed(els.sideMessageInput);
   }
 
   // Actually performs the side-chat API call, with one automatic silent retry if the response
@@ -2983,7 +3024,7 @@
     chip.addEventListener('click', () => {
       els.messageInput.value = chip.dataset.fill;
       els.messageInput.dispatchEvent(new Event('input'));
-      els.messageInput.focus();
+      focusIfKeyboardAllowed(els.messageInput);
     });
   });
   if (els.emptyTopicsChip) els.emptyTopicsChip.addEventListener('click', openTopicsModal);
@@ -3020,6 +3061,9 @@
     els.messageInput.style.height = 'auto';
     if (els.charCount) els.charCount.textContent = '0';
     if (typeof hideSlashPopup === 'function') hideSlashPopup();
+    // Sending hands the screen back to the reply, so on touch devices drop the keyboard here
+    // instead of letting it keep covering roughly half the viewport while the answer streams in.
+    dismissKeyboardOnTouch();
 
     await sendTurn(convo, parentId, typed, {
       displayText: displayTyped,
@@ -3060,7 +3104,7 @@
     busy = false;
     els.sendBtn.disabled = false;
     syncNextTopicButton();
-    els.messageInput.focus();
+    focusIfKeyboardAllowed(els.messageInput);
   }
 
   // Performs the actual API call for a given (already-created) user message and writes the result
@@ -3660,6 +3704,7 @@
     modesDraft = getActiveModes(c).slice();
     renderModesModal();
     els.modesOverlay.classList.add('show');
+    dismissKeyboardOnTouch();
   }
   function closeModesModal(){ els.modesOverlay.classList.remove('show'); }
 
@@ -3779,7 +3824,7 @@
     els.messageInput.value = '';
     els.messageInput.dispatchEvent(new Event('input'));
     hideSlashPopup();
-    els.messageInput.focus();
+    focusIfKeyboardAllowed(els.messageInput);
   }
   els.messageInput.addEventListener('keydown', (e) => {
     if (!els.slashPopup || !els.slashPopup.classList.contains('show')) return;
@@ -4304,7 +4349,8 @@
     if (els.topicsSearchClear) els.topicsSearchClear.style.display = 'none';
     renderTopicsTree();
     els.topicsOverlay.classList.add('show');
-    setTimeout(() => els.topicsSearchInput && els.topicsSearchInput.focus(), 150);
+    dismissKeyboardOnTouch();
+    focusIfKeyboardAllowed(els.topicsSearchInput, 150);
   }
   function closeTopicsModal(){ els.topicsOverlay.classList.remove('show'); }
 
@@ -4328,7 +4374,7 @@
       els.topicsSearchInput.value = '';
       els.topicsSearchClear.style.display = 'none';
       renderTopicsTree();
-      els.topicsSearchInput.focus();
+      focusIfKeyboardAllowed(els.topicsSearchInput);
     });
   }
 
@@ -4511,6 +4557,7 @@
     draft = JSON.parse(JSON.stringify(applied));
     populateModal();
     els.modalOverlay.classList.add('show');
+    dismissKeyboardOnTouch();
   }
   function closeModal(){ els.modalOverlay.classList.remove('show'); }
   els.settingsBtn.addEventListener('click', openModal);
@@ -4796,7 +4843,7 @@
       x.className = 'mx'; x.type = 'button'; x.innerHTML = '×';
       x.addEventListener('click', (e) => { e.stopPropagation(); draft.prompts = draft.prompts.filter(p2 => p2 !== p); renderPromptChips(); });
       chip.appendChild(x);
-      chip.addEventListener('click', () => { els.messageInput.value = p + ' '; closeModal(); els.messageInput.focus(); els.messageInput.dispatchEvent(new Event('input')); });
+      chip.addEventListener('click', () => { els.messageInput.value = p + ' '; closeModal(); focusIfKeyboardAllowed(els.messageInput); els.messageInput.dispatchEvent(new Event('input')); });
       els.promptChips.appendChild(chip);
     });
   }
