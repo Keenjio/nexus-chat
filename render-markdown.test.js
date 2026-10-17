@@ -9,7 +9,7 @@ const rendererStart = source.indexOf('  function isEscapedAt');
 const rendererEnd = source.indexOf('  function renderKatexIn');
 const escapeHtmlSource = source.slice(escapeStart, rendererStart);
 const rendererSource = source.slice(rendererStart, rendererEnd);
-const katexStart = source.indexOf('  function renderKatexIn');
+const katexStart = source.indexOf('  function collectDisplayTex');
 const katexEnd = source.indexOf('  // ---- Mermaid diagrams', katexStart);
 const katexSource = source.slice(katexStart, katexEnd);
 const studyStart = source.indexOf('  const STUDY_MODE_IDS');
@@ -43,6 +43,21 @@ const renderKatexIn = new Function(
   'renderMathInElement',
   `${katexSource}\nreturn renderKatexIn;`
 )({ renderMathInElement: captureKatex }, captureKatex);
+
+// The formula-card section is guarded with `typeof document !== 'undefined'` around its DOM wiring,
+// so this lifts the whole thing out as pure functions with no DOM shims needed.
+const fxStart = source.indexOf('  const FX_ABORT = {};');
+const fxEnd = source.indexOf('  /* ---- DOM side: chips in the thread, sheet on tap ---- */', fxStart);
+const fx = new Function(
+  `${source.slice(fxStart, fxEnd)}\nreturn { fxCompile, fxEval, fxFormat, fxSplitEq };`
+)();
+
+// Evaluates `src` at its seeded defaults. Returns NaN when the compiler declines it.
+function evalFormula(src){
+  const compiled = fx.fxCompile(src);
+  if (!compiled) return NaN;
+  return fx.fxEval(compiled, compiled.vars.map(v => v.value));
+}
 
 function escapeAttr(value){
   return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -212,4 +227,100 @@ test('preserves non-dollar currency symbols', () => {
   assert.ok(out.includes('£0.89'));
   assert.ok(out.includes('¥200'));
   assert.ok(out.includes('₹300'));
+});
+
+test('evaluates present-value discounting', () => {
+  // The headline example from the thread: 100 received five years out, discounted at 8%.
+  assert.ok(Math.abs(evalFormula('PV = \\frac{FV}{(1+r)^{n}}') - 68.0589) < 0.001);
+  assert.ok(Math.abs(evalFormula('\\frac{100}{(1.08)^{5}}') - 68.0589) < 0.001);
+  assert.ok(Math.abs(evalFormula('PV = \\frac{110}{(1.10)}') - 100) < 0.001);
+});
+
+test('keeps the exponent attached to the fraction denominator', () => {
+  // Regression: parsing \frac's arguments at atom level leaves a dangling ^5 for the outer
+  // parsePower to consume, which silently turns 100/(1.08)^5 into (100/1.08)^5.
+  const wrong = Math.pow(100 / 1.08, 5);
+  assert.ok(Math.abs(evalFormula('\\frac{100}{(1.08)^{5}}') - 68.0589) < 0.001);
+  assert.ok(Math.abs(evalFormula('\\frac{100}{(1.08)^{5}}') - wrong) > 1);
+});
+
+test('reads percent signs and thousands separators', () => {
+  // {,} is a thousands separator in LaTeX, not a decimal comma — dropping it must leave 1100.
+  assert.ok(Math.abs(fx.fxEval(fx.fxCompile('1{,}100'), []) - 1100) < 1e-9);
+  assert.ok(Math.abs(fx.fxEval(fx.fxCompile('50\\%'), []) - 0.5) < 1e-9);
+  assert.ok(Math.abs(fx.fxEval(fx.fxCompile('\\frac{1{,}000}{100}'), []) - 10) < 1e-9);
+  assert.ok(Math.abs(fx.fxEval(fx.fxCompile('\\frac{1{,}100\\%}{100}'), []) - 0.11) < 1e-9);
+});
+
+test('evaluates the Gordon growth shape', () => {
+  // D_1 = 5, r = 0.08, g = 0.03 -> 5 / 0.05 = 100.
+  assert.ok(Math.abs(evalFormula('P_0 = \\frac{D_1}{r - g}') - 100) < 1e-9);
+  const twoStage = fx.fxCompile('P_N = \\frac{D_{N+1}}{r - g_2}');
+  assert.equal(twoStage, null, 'compound subscripts must be refused, not partially evaluated');
+});
+
+test('raises exponents rather than xoring them', () => {
+  // Regression: emitting '^' into the compiled JS makes (1.08)^5 mean 1^5 = 4 in JavaScript,
+  // which returned 25 instead of 68.06 without ever throwing.
+  const compiled = fx.fxCompile('\\frac{FV}{(1+r)^{n}}');
+  assert.ok(!/\^/.test(compiled.fn.toString()), 'compiled body must not contain the XOR operator');
+  assert.ok(Math.abs(fx.fxEval(compiled, [100, 0.08, 5]) - 68.0589) < 1e-3);
+  assert.ok(Math.abs(evalFormula('2^{10}') - 1024) < 1e-9);
+  assert.ok(Math.abs(evalFormula('\\frac{1}{2}') - 0.5) < 1e-9);
+});
+
+test('treats every repeated symbol as one variable', () => {
+  const compiled = fx.fxCompile('\\frac{100}{(1+r)^{n}} + \\frac{100}{(1+r)^{n}}');
+  assert.deepEqual(compiled.vars.map(v => v.name), ['r', 'n']);
+});
+
+test('supports exponents, roots, functions and implicit products', () => {
+  assert.ok(Math.abs(evalFormula('\\sqrt{144}') - 12) < 1e-9);
+  assert.ok(Math.abs(evalFormula('3\\pi') - 3 * Math.PI) < 1e-9);
+  assert.ok(Math.abs(evalFormula('2(1+PV)') - 202) < 1e-9);
+  assert.ok(Math.abs(fx.fxEval(fx.fxCompile('\\ln(e^{2})'), [Math.E]) - 2) < 1e-9);
+  // An n-th root is a square root with a different index; answering \sqrt[3]{8} with sqrt(8)
+  // would be a plausible-looking wrong number, so anything but [2] is refused.
+  assert.equal(fx.fxCompile('\\sqrt[3]{8}'), null);
+  assert.ok(Math.abs(fx.fxEval(fx.fxCompile('\\sqrt[2]{9}'), []) - 3) < 1e-9);
+});
+
+test('refuses what it cannot evaluate exactly', () => {
+  // Summations, matrices, relational operators and unbalanced input must all decline rather than
+  // return a plausible-looking number: this tool feeds exam-prep material.
+  for (const src of [
+    'P_0 = \\sum_{t=1}^{N} \\frac{D_t}{(1+r)^{t}}',
+    'A = \\begin{pmatrix} 1 & 2 \\end{pmatrix}',
+    'P_0 \\leq \\frac{D_1}{r - g}',
+    'E = 1 +',
+    'x = y = 2',
+    '\\infty',
+    ''
+  ]) {
+    assert.equal(fx.fxCompile(src), null, 'expected refusal for: ' + src);
+  }
+});
+
+test('reports a non-finite result instead of overflowing', () => {
+  const compiled = fx.fxCompile('PV = \\frac{FV}{(1+r)^{n}}');
+  assert.deepEqual(compiled.vars.map(v => v.name), ['FV', 'r', 'n']);
+  assert.ok(Number.isNaN(fx.fxEval(compiled, [100, -1, 1])));      // r = -1 divides by zero
+  assert.ok(Number.isNaN(fx.fxEval(compiled, [100, 0.08, -1e9]))); // exponent collapses to zero
+  assert.ok(Number.isNaN(fx.fxEval({ fn: () => 1e13 }, [])), 'sanity cap');
+  assert.ok(Number.isNaN(fx.fxEval(null, [])));
+});
+
+test('formats results for reading', () => {
+  assert.equal(fx.fxFormat(68.05894), '68.0589');
+  assert.equal(fx.fxFormat(0.08), '0.08');
+  assert.equal(fx.fxFormat(NaN), '—');
+  assert.equal(fx.fxFormat(1e13), '1.000e+13');
+});
+
+test('splits an assignment on the first top-level equals only', () => {
+  assert.equal(fx.fxSplitEq('PV = FV/(1+r)^n'), 3);
+  assert.equal(fx.fxSplitEq('a_{t=1}'), -1, 'an equals inside a subscript is not a top-level one');
+  assert.equal(fx.fxSplitEq('a_{t=1} = b'), 8, 'the subscript equals is skipped, the real one found');
+  assert.equal(fx.fxSplitEq('x \\le y'), -1);
+  assert.equal(fx.fxSplitEq('a = b = c'), 2);
 });

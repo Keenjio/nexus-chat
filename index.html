@@ -516,12 +516,19 @@
   .bubble hr{border:none;border-top:1px solid var(--line);margin:18px 0;}
   .bubble .katex{font-size:1.03em;}
   .bubble .katex-display{margin:14px 0;overflow-x:auto;overflow-y:hidden;}
-  .table-scroll{overflow-x:auto;margin:10px 0;border:1px solid var(--line);border-radius:10px;max-width:100%;}
-  .bubble table{border-collapse:collapse;width:100%;font-size:.93em;table-layout:fixed;}
-  .bubble table th,.bubble table td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line-soft);white-space:normal;overflow-wrap:break-word;word-break:break-word;}
-  .bubble table th{font-family:'Inter',sans-serif;font-size:.85em;font-weight:600;color:var(--text-hi);background:var(--bg-1);}
-  .bubble table tr:last-child td{border-bottom:none;}
-  .bubble table td:first-child,.bubble table th:first-child{font-weight:500;color:var(--text-hi);}
+  /* Tables read as plain ruled rows: no card border, no header fill, no vertical or outer lines.
+     Only the horizontal row rules survive, and the last one is dropped so the block doesn't end on
+     a stray rule. table-layout:auto sizes columns to their content instead of splitting them into
+     fixed equal slivers — that, plus dropping word-break, is what stops headers like
+     "Cash flow valued" from wrapping mid-phrase. The wrapper stays a horizontal scroll escape
+     hatch for genuinely wide tables. */
+  .table-scroll{overflow-x:auto;margin:14px 0;max-width:100%;-webkit-overflow-scrolling:touch;}
+  .bubble table{border-collapse:collapse;width:100%;font-size:.95em;table-layout:auto;}
+  .bubble table th,.bubble table td{padding:11px 16px;text-align:left;border-bottom:1px solid rgba(255,255,255,.1);white-space:normal;overflow-wrap:break-word;vertical-align:top;}
+  .bubble table th:first-child,.bubble table td:first-child{padding-left:0;}
+  .bubble table th:last-child,.bubble table td:last-child{padding-right:0;}
+  .bubble table th{font-family:'Inter',sans-serif;font-size:1em;font-weight:600;color:var(--text-hi);background:none;border-bottom-color:rgba(255,255,255,.22);}
+  .bubble table tr:last-child td,.bubble table tr:last-child th{border-bottom:none;}
 
   .meta-line{font-size:10.5px;color:var(--text-faint);font-family:'IBM Plex Mono',monospace;padding:0;}
   .typing{display:flex;gap:4px;padding:6px 2px;}
@@ -565,13 +572,8 @@
   .send-btn:disabled{opacity:.3;cursor:not-allowed;}
   .composer-foot{display:flex;justify-content:space-between;margin-top:9px;padding:0 12px;}
   .composer-foot span{font-size:11px;color:var(--text-faint);font-family:'Inter',sans-serif;}
-  @media (max-width:640px){
-    .composer{padding:10px 12px 14px;}
-    .composer-box{min-height:54px;border-radius:24px;padding:9px 9px 9px 15px;}
-     textarea#messageInput{font-size:16px;}
-     .next-topic-btn{padding:0 8px;font-size:11px;}
-     .send-btn{width:36px;height:36px;}
-  }
+  /* Composer sizing for phones used to live in a separate ≤640px block here. It now sits in the
+     single phone-layout block at the end of this sheet, which covers the same widths plus tablets. */
 
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg-2);border:1px solid var(--line);color:var(--text-hi);padding:11px 18px;border-radius:10px;font-size:12.5px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:80;box-shadow:0 14px 34px rgba(0,0,0,.5);}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -692,6 +694,161 @@
   [data-theme="graphite"] body{--paper:#131313;--bg-0:#131313;}
   body.compact .msg{padding:12px 0;}
   body.compact .bubble{font-size:14px;}
+
+  /* ============ EXPANDABLE CARDS ============
+     Diagrams, ASCII art, tables and code blocks get wrapped in .xcard once rendered. On desktop
+     the wrapper is completely inert (no frame, no scaling, no overlay), so nothing changes. On
+     phones the same node — the real diagram/table, not a clone — is shown scaled down inside a
+     clipped frame, and tapping the overlay moves that very node into a full-screen sheet. Moving
+     one node rather than cloning keeps Mermaid's generated <defs>/ids unique and avoids any risk
+     of a preview going stale against the live content. */
+  .xcard{position:relative;}
+  .xcard-frame{position:relative;border-radius:12px;}
+  .xcard-scale{transform-origin:0 0;}
+  .xcard-hit,.xcard-tag,.xcard-home{display:none;}
+  @media (max-width:820px){
+    .xcard{margin:12px 0;}
+    .xcard-frame{height:134px;overflow:hidden;border:1px solid var(--line);background:var(--bg-1);border-radius:14px;}
+    .xcard-scale{--xc-k:.46;transform:scale(var(--xc-k));width:calc(100% / var(--xc-k));}
+    .xcard-hit{display:block;position:absolute;inset:0;width:100%;height:100%;background:none;border:none;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+    .xcard-tag{position:absolute;left:8px;bottom:8px;display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;background:rgba(13,13,13,.8);border:1px solid var(--line);color:var(--text-mid);font-family:'Inter',sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.02em;pointer-events:none;}
+  }
+  /* Between 641 and 820px the phone layout has far more horizontal room, so the preview opens up
+     rather than shrinking the same fixed slice of the diagram into an unreadably small strip. Both
+     factors are chosen to show roughly the same slice of source content (~285px tall) as .46 in
+     134px does on a narrow phone. */
+  @media (min-width:641px) and (max-width:820px){
+    .xcard-frame{height:186px;}
+    .xcard-scale{--xc-k:.66;}
+  }
+
+  .xcard-sheet{display:none;position:fixed;inset:0;z-index:60;background:rgba(9,9,9,.985);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+  .xcard-sheet.show{display:flex;animation:sheet-in .18s ease;}
+  @keyframes sheet-in{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+  .xcard-sheet-bar{flex:none;display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line-soft);}
+  .xcard-sheet-title{flex:1;min-width:0;font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;color:var(--text-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .xcard-sheet-tools{display:flex;align-items:center;gap:6px;flex:none;}
+  .xcard-sheet-btn{width:34px;height:34px;border-radius:50%;background:var(--bg-2);border:1px solid var(--line);color:var(--text-mid);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;-webkit-tap-highlight-color:transparent;}
+  .xcard-sheet-btn:hover{color:var(--text-hi);border-color:var(--text-lo);}
+  .xcard-sheet-btn.voted{color:var(--nvidia);border-color:var(--nvidia);}
+  .xcard-sheet-body{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 12px 28px;}
+  .xcard-sheet-body>.xcard{margin:0;}
+  .xcard-sheet-body .xcard-hit,.xcard-sheet-body .xcard-tag{display:none;}
+  .xcard-sheet-body .xcard-frame{height:auto;overflow:visible;border:none;background:none;border-radius:0;}
+  .xcard-sheet-body .xcard-scale{transform:none;width:auto;}
+  body.xcard-open{overflow:hidden;}
+
+  /* ============ FORMULA CARDS — a display formula becomes a tappable chip ============
+     KaTeX renders \[...\] as a full-width centred block, which on a phone either overflows or
+     shoves the surrounding paragraph out of alignment. Each display formula is instead wrapped in
+     an inline chip — the formula typeset small with an expand affordance — that stays in the line
+     and opens .fx-sheet on tap. The sheet shows the formula at full size plus, when the LaTeX is
+     inside the subset fxCompile() understands, one slider per variable and a live result. */
+  .fxcard{display:inline-flex;align-items:center;gap:10px;max-width:100%;margin:6px 0;padding:6px 8px 6px 14px;border:1px solid var(--line);border-radius:14px;background:var(--bg-1);vertical-align:middle;position:relative;-webkit-tap-highlight-color:transparent;}
+  .fxcard-math{min-width:0;overflow:hidden;}
+  .fxcard .katex-display{margin:0;font-size:.86em;overflow:visible;}
+  .fxcard-open{flex:none;width:26px;height:26px;border-radius:50%;background:var(--bg-2);border:1px solid var(--line);color:var(--text-mid);display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;}
+  .fxcard-hit{position:absolute;inset:0;width:100%;height:100%;background:none;border:none;padding:0;margin:0;cursor:pointer;border-radius:inherit;}
+  .fxcard-hit:focus-visible{outline:2px solid var(--nvidia);outline-offset:2px;}
+
+  .fx-sheet{display:none;position:fixed;inset:0;z-index:60;background:rgba(9,9,9,.985);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+  .fx-sheet.show{display:flex;animation:sheet-in .18s ease;}
+  .fx-sheet-bar{flex:none;display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line-soft);}
+  .fx-sheet-spacer{flex:1;}
+  .fx-sheet-btn{height:34px;min-width:34px;padding:0 13px;border-radius:999px;background:var(--bg-2);border:1px solid var(--line);color:var(--text-mid);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;-webkit-tap-highlight-color:transparent;}
+  .fx-sheet-btn:hover{color:var(--text-hi);border-color:var(--text-lo);}
+  .fx-sheet-btn.icon{padding:0;border-radius:50%;}
+  .fx-sheet-body{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:22px 18px 34px;display:flex;flex-direction:column;gap:20px;}
+  .fx-math{overflow-x:auto;overflow-y:hidden;padding:4px 0;}
+  .fx-math .katex-display{margin:0;}
+  /* The result readout: label, big number, then the formula re-typeset with the current values
+     substituted in, so you can see exactly which numbers produced the number above it. */
+  .fx-eq{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 14px;border:1px solid var(--line);border-radius:14px;background:var(--bg-1);}
+  .fx-eq-label{font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);}
+  .fx-eq-value{font-family:'Inter',sans-serif;font-size:30px;font-weight:600;color:var(--nvidia);letter-spacing:-.02em;word-break:break-word;text-align:center;}
+  .fx-eq-value.invalid{color:var(--text-faint);font-size:22px;}
+  .fx-eq-sub{width:100%;overflow-x:auto;padding-top:4px;}
+  .fx-eq-sub .katex-display{margin:0;font-size:.95em;}
+  .fx-vars{display:flex;flex-direction:column;gap:15px;}
+  .fx-var-row{display:grid;grid-template-columns:78px 1fr 64px;align-items:center;gap:12px;}
+  .fx-var-name{font-size:16px;color:var(--text-hi);overflow:hidden;}
+  .fx-var-slider{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:99px;background:var(--bg-3);outline:none;margin:0;}
+  .fx-var-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--text-hi);border:3px solid var(--bg-0);box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:pointer;}
+  .fx-var-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--text-hi);border:3px solid var(--bg-0);box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:pointer;}
+  .fx-var-val{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text-mid);text-align:right;}
+  .fx-note{font-size:12px;color:var(--text-faint);line-height:1.55;text-align:center;margin:0;}
+  body.fx-open{overflow:hidden;}
+
+  /* ============ PHONE LAYOUT — floating controls over the thread, ChatGPT-style ============
+     Below 820px the topbar is replaced by round floating buttons pinned to the top corners and
+     the composer becomes a free-floating pill, so the conversation owns the whole screen. The
+     breakpoint is 820 rather than 700 so small tablets and landscape phones get the same layout;
+     the tighter ≤640 rules earlier in this sheet are the second pass for genuinely narrow screens.
+
+     This block is also the single place the phone type scale and composer are defined — it used to
+     be split with a ≤640px block next to .composer-foot, which is now folded in here. Keep it last
+     in the sheet: several of these rules deliberately override same-specificity desktop styles
+     (.composer-box, .thread) purely by source order. */
+  .m-fabs{display:none;}
+  @media (max-width:820px){
+    .m-fabs{position:fixed;top:calc(6px + env(safe-area-inset-top));left:0;right:0;z-index:25;display:flex;align-items:center;justify-content:space-between;padding:0 10px;pointer-events:none;}
+    .m-fab{pointer-events:auto;width:38px;height:38px;border-radius:50%;background:rgba(23,23,23,.74);border:1px solid var(--line);color:var(--text-hi);display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 6px 18px rgba(0,0,0,.4);-webkit-tap-highlight-color:transparent;padding:0;}
+    .m-fab:active{background:var(--bg-2);}
+    .m-fab-group{pointer-events:auto;display:flex;align-items:center;gap:2px;padding:3px;border-radius:999px;background:rgba(23,23,23,.74);border:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 6px 18px rgba(0,0,0,.4);}
+    .m-fab-group .m-fab{background:none;border:none;box-shadow:none;width:34px;height:34px;}
+
+    .topbar{display:none;}
+    .thread{padding:0 16px 132px;scroll-padding-bottom:132px;}
+    .thread-inner{padding-top:64px;}
+
+    /* Composer: a flat, evenly-lit pill floating over the thread. The desktop treatment is a
+       glassy slab with a heavy drop shadow and inset top highlight, which reads as a panel rather
+       than an input once the composer is full-width and sitting on top of the text — so here it
+       becomes one solid surface with a hairline border and a much softer shadow. */
+    .composer{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:10px 10px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(13,13,13,0),rgba(13,13,13,.5) 38%,rgba(13,13,13,.96) 100%);}
+    .composer-box{min-height:52px;border-radius:28px;padding:8px 8px 8px 16px;gap:6px;background:var(--bg-2);border:1px solid rgba(255,255,255,.09);box-shadow:0 6px 20px rgba(0,0,0,.42);}
+    .composer-box:focus-within{border-color:rgba(255,255,255,.17);background:var(--bg-2);box-shadow:0 6px 22px rgba(0,0,0,.48);}
+    /* 16px, not 15: iOS Safari zooms the page on focus for any input under 16px, and the composer
+       is focused constantly on a phone. This has to live in the phone block, not a narrower one. */
+    textarea#messageInput{font-size:16px;}
+    .send-btn{width:34px;height:34px;}
+    /* Icon-only: the "Next topic" label costs more width than a phone composer can spare. */
+    .next-topic-btn{width:34px;height:34px;padding:0;justify-content:center;border-radius:50%;}
+    .next-topic-btn span{display:none;}
+    .composer-foot{display:none;}
+    .toast{bottom:96px;}
+
+    /* Type scale: 17px with a roomier measure, matching the ChatGPT phone reader. Headings,
+       lists and paragraph spacing all step up with it so the rhythm stays consistent. */
+    .bubble{font-size:17px;line-height:1.7;}
+    .msg{padding:16px 0;}
+    .bubble p{margin:0 0 16px;}
+    .bubble ul,.bubble ol{padding-left:24px;}
+    .bubble li{margin-bottom:8px;}
+    .bubble h1,.bubble h2,.bubble h3{margin:22px 0 10px;}
+    .bubble h1{font-size:1.34em;}
+    .bubble h2{font-size:1.18em;}
+    .bubble h3{font-size:1.06em;}
+    .bubble hr{margin:20px 0;}
+    .meta-line{font-size:11px;}
+    .msg.assistant .answer-marker{font-size:11px;}
+    /* Bigger hit targets for the per-message actions — they are always visible on touch already
+       (see the ≤880px rule above) and 11.5px/5px padding is too small to tap reliably. */
+    .msg-action-btn,.branch-new-btn{font-size:12px;padding:7px 12px;margin-top:12px;}
+    .branch-switch{margin-top:10px;}
+    .branch-nav{width:28px;height:28px;}
+    .empty h2{font-size:22px;}
+    .empty p{font-size:14px;}
+
+    .fx-sheet-body{padding:18px 14px 30px;gap:18px;}
+    .fx-eq-value{font-size:26px;}
+    .fx-var-row{grid-template-columns:64px 1fr 56px;gap:9px;}
+    .fx-var-name{font-size:15px;}
+
+    .modal-overlay,.modes-overlay,.topics-overlay{padding:0;}
+    .modal,.modes-modal,.topics-modal{max-width:none;width:100%;max-height:100vh;height:100%;border:none;border-radius:0;}
+    .shortcut-hints{display:none !important;}
+  }
 </style>
 </head>
 <body>
@@ -729,6 +886,87 @@
   <div class="shortcut-hints-row"><span class="shortcut-combo"><kbd>Alt</kbd><span class="shortcut-plus">+</span><kbd>R</kbd></span><span>Response modes</span></div>
   <div class="shortcut-hints-row"><span class="shortcut-combo"><kbd>Alt</kbd><span class="shortcut-plus">+</span><kbd>B</kbd></span><span>Book library</span></div>
   <div class="shortcut-hints-foot">With the menu open, press <b>N</b> for new chat, <b>B</b> for the library, or <b>S</b> for settings.</div>
+</div>
+
+<!-- Phone-only floating controls, portaled next to the other overlays so they can sit above the
+     thread without being clipped by it. Hidden entirely above 820px by CSS, where the topbar
+     carries the same actions. -->
+<div class="m-fabs" id="mFabs">
+  <button type="button" class="m-fab" id="mMenuBtn" aria-label="Menu" aria-haspopup="menu">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
+  <div class="m-fab-group">
+    <button type="button" class="m-fab" id="mNewChatBtn" aria-label="New chat">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button type="button" class="m-fab" id="mMoreBtn" aria-label="More options" aria-haspopup="menu">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="19" r="1.6" fill="currentColor"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- Overflow menu for the phone's ⋮ button. Same items as the topbar's panel toggles, gathered
+     into one sheet because the topbar itself is hidden at this width. -->
+<div class="menu-dropdown" id="mMoreMenu" role="menu">
+  <button type="button" class="menu-dropdown-item" id="mModesBtn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9L12 3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+    <span class="menu-item-label">Response modes</span>
+  </button>
+  <button type="button" class="menu-dropdown-item" id="mTopicsBtn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="menu-item-label">Book library</span>
+  </button>
+  <button type="button" class="menu-dropdown-item" id="mNotesBtn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 4h16v12l-4 4H4V4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M20 16h-4v4" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+    <span class="menu-item-label">Notes</span>
+  </button>
+  <button type="button" class="menu-dropdown-item" id="mSideBtn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 12a8 8 0 01-8 8H4l2-3-2-3h7a8 8 0 018-2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+    <span class="menu-item-label">Side chat</span>
+  </button>
+  <button type="button" class="menu-dropdown-item" id="mSettingsBtn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 00.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.8"/></svg>
+    <span class="menu-item-label">Settings</span>
+  </button>
+  <button type="button" class="menu-dropdown-item new-chat" id="mMenuNewChatBtn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="menu-item-label">New chat</span>
+  </button>
+</div>
+
+<!-- Full-screen viewer an .xcard is moved into on a phone. Kept at body level (not inside the
+     message) because .msg carries an animation that resolves to a non-none transform, which would
+     otherwise make it the containing block for any position:fixed descendant. -->
+<div class="xcard-sheet" id="xcardSheet" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="xcard-sheet-bar">
+    <span class="xcard-sheet-title" id="xcardSheetTitle">Detail</span>
+    <span class="xcard-sheet-tools">
+      <button type="button" class="xcard-sheet-btn" id="xcardUp" aria-label="Helpful" title="Helpful">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M7 10v11H4a1 1 0 01-1-1v-9a1 1 0 011-1h3zM7 10l4.2-7.1a1.6 1.6 0 012.9 1.2L13 8h5.6a2 2 0 011.95 2.45l-1.4 7A2 2 0 0117.2 19H7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button type="button" class="xcard-sheet-btn" id="xcardDown" aria-label="Not helpful" title="Not helpful">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M7 14V3H4a1 1 0 00-1 1v9a1 1 0 001 1h3zM7 14l4.2 7.1a1.6 1.6 0 002.9-1.2L13 16h5.6a2 2 0 001.95-2.45l-1.4-7A2 2 0 0017.2 5H7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button type="button" class="xcard-sheet-btn" id="xcardSheetClose" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M6 18L18 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </span>
+  </div>
+  <div class="xcard-sheet-body" id="xcardSheetBody"></div>
+</div>
+
+<!-- Full-screen viewer for a formula card. Built entirely on open — the formula is re-typeset from
+     the card's stored LaTeX, then one slider per variable is generated from whatever fxCompile()
+     could make of it (see the formula-cards section in the script). -->
+<div class="fx-sheet" id="fxSheet" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="fx-sheet-bar">
+    <button type="button" class="fx-sheet-btn icon" id="fxSheetClose" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M6 18L18 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+    <span class="fx-sheet-spacer"></span>
+    <button type="button" class="fx-sheet-btn" id="fxReset">Reset</button>
+  </div>
+  <div class="fx-sheet-body" id="fxSheetBody"></div>
 </div>
 
 <div class="shell" id="shell">
@@ -770,6 +1008,10 @@
     </div>
 
     <div class="body-row" id="bodyRow">
+    <!-- Scrim sits inside .body-row, not as a sibling of .shell: .main establishes a stacking
+         context (position:relative + z-index), so a body-level scrim would paint over the very
+         panels it is meant to sit behind and swallow their clicks on phones. -->
+    <div class="side-scrim" id="sideScrim"></div>
     <div class="thread-col">
     <div class="thread" id="thread">
       <div class="thread-inner" id="threadInner">
@@ -863,8 +1105,6 @@
     </div>
   </div>
 </div>
-<div class="side-scrim" id="sideScrim"></div>
-
 <!-- SETTINGS MODAL -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
@@ -1795,7 +2035,31 @@
     return s;
   }
 
+  /* Display formulas are pulled out of the DOM text *before* KaTeX runs and stashed on the root,
+     because renderMathInElement replaces \[...\] with rendered markup and the original LaTeX is
+     gone afterwards — which is the only thing the formula cards can actually be driven from. The
+     stash is in document order, and KaTeX walks the tree in document order too, so index N of the
+     stash is the source of the Nth .katex-display. Children are walked manually to skip the same
+     tags KaTeX ignores, so a \[...\] inside a code block is never captured. */
+  function collectDisplayTex(node, out){
+    if (!node) return;
+    if (node.nodeType === 3) {
+      const t = node.nodeValue;
+      if (!t || t.indexOf('\\[') === -1) return;
+      t.replace(/\\\[([\s\S]*?)\\\]/g, (_, tex) => { out.push(tex.trim()); return _; });
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    const tag = node.tagName;
+    if (tag === 'SCRIPT' || tag === 'TEXTAREA' || tag === 'PRE' || tag === 'CODE' || tag === 'OPTION' || tag === 'SELECT') return;
+    const kids = node.childNodes;
+    if (!kids) return;
+    for (let i = 0; i < kids.length; i++) collectDisplayTex(kids[i], out);
+  }
+
   function renderKatexIn(el){
+    const dispTex = [];
+    collectDisplayTex(el, dispTex);
     if (window.renderMathInElement) {
       try {
         renderMathInElement(el, {
@@ -1808,6 +2072,7 @@
         });
       } catch {}
     }
+    if (dispTex.length) el.__fxDispTex = dispTex;
   }
 
   // ---- Mermaid diagrams (used by Concept Map mode, and by any response that includes a
@@ -2612,9 +2877,7 @@
           renderStickyBoard(bubble, stickyNotes);
         } else {
           bubble.innerHTML = renderMarkdown(text);
-          renderKatexIn(bubble);
-          renderMermaidIn(bubble);
-          renderSvgIn(bubble);
+          renderRichInto(bubble);
         }
       }
     }
@@ -2630,6 +2893,596 @@
     els.threadInner.appendChild(wrap);
     els.thread.scrollTop = els.thread.scrollHeight;
     return { wrap, bubble };
+  }
+
+  /* ---------------- expandable cards ----------------
+     Everything an answer renders as a self-contained block — Mermaid/SVG figures, ASCII art,
+     tables, code — is wrapped so that on a phone it reads as a small tappable card and opens
+     full-screen, instead of forcing the reader to scroll past a wide diagram mid-paragraph.
+     Wrapping happens after the rich renderers have run, so the node that gets wrapped is the
+     finished element (an actual SVG, a real <table>), not a placeholder.
+
+     The wrap is inert above 820px (see .xcard rules), so this is safe to run on every render. */
+  const XCARD_SELECTOR = '.mermaid-diagram, .svg-diagram, pre.ascii-art, .table-scroll, .bubble pre:not(.ascii-art)';
+  function xcardKindOf(el){
+    if (el.classList.contains('mermaid-diagram') || el.classList.contains('svg-diagram') || el.classList.contains('ascii-art')) return 'Diagram';
+    if (el.classList.contains('table-scroll')) return 'Table';
+    return 'Code';
+  }
+  function applyExpandableCards(root){
+    if (!root || typeof root.querySelectorAll !== 'function') return;
+    root.querySelectorAll(XCARD_SELECTOR).forEach(el => {
+      if (el.closest('.xcard')) return;
+      const kind = xcardKindOf(el);
+      const wrap = document.createElement('div');
+      wrap.className = 'xcard';
+      wrap.dataset.kind = kind;
+      const frame = document.createElement('div');
+      frame.className = 'xcard-frame';
+      const scaler = document.createElement('div');
+      scaler.className = 'xcard-scale';
+      el.parentNode.insertBefore(wrap, el);
+      scaler.appendChild(el);
+      frame.appendChild(scaler);
+      wrap.appendChild(frame);
+      const hit = document.createElement('button');
+      hit.type = 'button';
+      hit.className = 'xcard-hit';
+      hit.setAttribute('aria-label', 'Open ' + kind.toLowerCase() + ' full screen');
+      const tag = document.createElement('span');
+      tag.className = 'xcard-tag';
+      tag.textContent = kind;
+      const chevron = document.createElement('span');
+      chevron.textContent = '⤢';
+      tag.appendChild(chevron);
+      wrap.appendChild(hit);
+      wrap.appendChild(tag);
+    });
+  }
+
+  let openXCard = null, openXCardHome = null;
+  function showXCard(card){
+    if (!card) return;
+    const sheet = $('xcardSheet'), body = $('xcardSheetBody');
+    if (!sheet || !body) return;
+    if (openXCard && openXCard !== card) closeXCard();
+    if (!card.parentNode) return;
+    if (!openXCardHome) openXCardHome = document.createElement('div');
+    openXCardHome.className = 'xcard-home';
+    card.parentNode.insertBefore(openXCardHome, card);
+    body.appendChild(card);
+    openXCard = card;
+    const title = $('xcardSheetTitle');
+    if (title) title.textContent = card.dataset.kind || 'Detail';
+    sheet.classList.add('show');
+    sheet.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('xcard-open');
+    if (openXCardHome.scrollIntoView) openXCardHome.scrollIntoView({block:'nearest'});
+  }
+  function closeXCard(){
+    const sheet = $('xcardSheet'), body = $('xcardSheetBody');
+    const card = openXCard, home = openXCardHome;
+    openXCard = null; openXCardHome = null;
+    if (card) {
+      card.classList.remove('open');
+      if (home && home.parentNode) home.replaceWith(card);
+      else if (!card.isConnected) body.appendChild(card);
+    }
+    document.body.classList.remove('xcard-open');
+    if (sheet) { sheet.classList.remove('show'); sheet.setAttribute('aria-hidden', 'true'); }
+    if (body) body.innerHTML = '';
+    const up = $('xcardUp'), down = $('xcardDown');
+    if (up) up.classList.remove('voted');
+    if (down) down.classList.remove('voted');
+  }
+
+  document.addEventListener('click', (e) => {
+    const hit = e.target.closest ? e.target.closest('.xcard-hit') : null;
+    if (hit) {
+      e.preventDefault();
+      e.stopPropagation();
+      showXCard(hit.parentNode);
+      return;
+    }
+    if (openXCard) {
+      const sheet = $('xcardSheet');
+      if (sheet && !sheet.contains(e.target)) closeXCard();
+    }
+  });
+  $('xcardSheetClose') && $('xcardSheetClose').addEventListener('click', closeXCard);
+  ['xcardUp', 'xcardDown'].forEach(id => {
+    const btn = $(id);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      btn.classList.add('voted');
+      showToast(id === 'xcardUp' ? 'Thanks — glad it helped' : 'Thanks — noted');
+    });
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openXCard) closeXCard(); });
+
+  /* ---------------- formula cards ----------------
+     Each display formula is wrapped in an inline chip (see .fxcard) that opens a full-screen sheet.
+     The sheet is only interactive when the LaTeX falls inside the subset fxCompile() can parse: it
+     compiles the source to a JS expression plus one slot per variable, so a slider per variable can
+     drive a live result.
+
+     Everything outside that subset returns null and the sheet shows the formula typeset with no
+     controls at all — no partial parse, no guessed defaults. The bail-outs are deliberately
+     conservative: summations with limits, matrices, relational operators, and compound subscripts
+     like D_{N+1} (whose value would silently not follow a slider for N) are all rejected rather than
+     approximated. For a study tool a confidently wrong number is far worse than no number, so the
+     compiler only ever claims what it can evaluate exactly. fxCompile/fxEval/fxFormat are pure and
+     DOM-free, and are covered by render-markdown.test.js. */
+  const FX_ABORT = {};
+  const FX_UNSUPPORTED = /\\(?:sum|prod|int|iint|oint|lim|limsup|liminf|begin|end|binom|choose|cases|ldots|cdots|dots|dotsc|pmatrix|bmatrix|vmatrix|matrix|array|overline|widehat|vec|bar|tilde|partial|nabla|infty|text|textrm|textbf|textit|mathrm|operatorname|approx|simeq|sim|propto|pm|mp|neq|ne|leq|ge|geq|equiv|notin|subset|union)\b|[≈≤≥≠≅≡∝→∞]/;
+  const FX_FUNCTIONS = {
+    ln:'Math.log', log:'Math.log10', exp:'Math.exp',
+    sin:'Math.sin', cos:'Math.cos', tan:'Math.tan',
+    abs:'Math.abs', sqrt:'Math.sqrt', pi:'Math.PI'
+  };
+  const FX_FRACTION = /^\\(?:frac|dfrac|tfrac|cfrac)/;
+  const FX_DEFAULT_VAR = { value:1, min:0, max:100, step:0.5 };
+  // Sensible starting points for the symbols that actually turn up in this material. Rates are
+  // seeded as decimals, not percents, because that is the convention these formulas are written in
+  // — (1.08)^5 and r - g with r = 0.10 — and seeding `r` at 8 would make every discounting formula
+  // open on a nonsense result. Anything not listed starts at 1 on a 0-100 range, which keeps an
+  // unknown symbol visible and adjustable rather than parking the result at zero.
+  const FX_KNOWN_VARS = {
+    PV:{value:100,min:0,max:500,step:1}, FV:{value:100,min:0,max:500,step:1},
+    r:{value:0.08,min:0,max:0.5,step:0.005}, i:{value:0.08,min:0,max:0.5,step:0.005},
+    k:{value:0.08,min:0,max:0.5,step:0.005}, q:{value:0.03,min:0,max:0.5,step:0.005},
+    g:{value:0.03,min:0,max:0.5,step:0.005}, g_1:{value:0.08,min:0,max:0.5,step:0.005},
+    g_2:{value:0.03,min:0,max:0.5,step:0.005}, ke:{value:0.1,min:0,max:0.5,step:0.005},
+    WACC:{value:0.1,min:0,max:0.5,step:0.005},
+    n:{value:5,min:1,max:30,step:1}, N:{value:5,min:1,max:30,step:1},
+    t:{value:1,min:1,max:30,step:1}, T:{value:0.25,min:0,max:1,step:0.01},
+    D:{value:5,min:0,max:200,step:1}, D_0:{value:5,min:0,max:200,step:1},
+    D_1:{value:5,min:0,max:200,step:1}, DPS:{value:5,min:0,max:200,step:1},
+    DPS_1:{value:5,min:0,max:200,step:1},
+    P:{value:100,min:0,max:500,step:1}, P_0:{value:100,min:0,max:500,step:1},
+    P_N:{value:150,min:0,max:500,step:1}, PE:{value:15,min:1,max:80,step:1},
+    PB:{value:3,min:0,max:20,step:0.5}, PS:{value:5,min:0,max:40,step:0.5},
+    E:{value:20,min:0,max:200,step:1}, E_1:{value:20,min:0,max:200,step:1},
+    EPS:{value:20,min:0,max:200,step:1}, EPS_1:{value:20,min:0,max:200,step:1},
+    EBIT:{value:50,min:0,max:500,step:1}, EBITDA:{value:80,min:0,max:500,step:1}
+  };
+
+  // Index of the first '=' that is at brace depth 0 and not part of <=, >=, != or ==. Returns -1
+  // when the expression has none.
+  function fxSplitEq(src){
+    let depth = 0;
+    for (let i = 0; i < src.length; i++) {
+      const c = src[i];
+      if (c === '\\') { i++; continue; }
+      if (c === '{') { depth++; continue; }
+      if (c === '}') { if (depth > 0) depth--; continue; }
+      if (c !== '=' || depth !== 0) continue;
+      const prev = src[i-1] || '', next = src[i+1] || '';
+      if ('<>!=:'.indexOf(prev) >= 0) continue;
+      if (next === '=') { i++; continue; }
+      return i;
+    }
+    return -1;
+  }
+
+  function fxCompile(src){
+    if (!src) return null;
+    const raw = String(src)
+      .replace(/\\[,;:!>|]/g, '')
+      .replace(/\\ /g, ' ')
+      .replace(/\\(?:qquad|quad|displaystyle|textstyle|mathstrut|limits|nolimits)\b/g, ' ')
+      .replace(/\\(?:left|right|big|Big|bigg|Bigg)\b/g, '')
+      .replace(/\{\s*,\s*\}/g, '')
+      .replace(/\\cdot\b|\\times\b/g, '*')
+      .replace(/\\div\b/g, '/')
+      .replace(/[£€₹¥]/g, '');
+    if (!raw.trim() || FX_UNSUPPORTED.test(raw)) return null;
+
+    let lhs = '', body = raw;
+    const eq = fxSplitEq(raw);
+    if (eq >= 0) {
+      if (fxSplitEq(raw.slice(eq + 1)) >= 0) return null; // a second '=' means this is a chain
+      lhs = raw.slice(0, eq).trim();
+      body = raw.slice(eq + 1).trim();
+      if (!lhs || !body) return null;
+    }
+
+    let i = 0;
+    const vars = [];
+    const slots = new Map();
+    const fail = () => { throw FX_ABORT; };
+    const ws = () => { while (i < body.length && /\s/.test(body[i])) i++; };
+    const lit = (t) => ({ js:t, tex:t });
+    const join = (...parts) => ({ js:parts.map(p => p.js).join(''), tex:parts.map(p => p.tex).join('') });
+    const group = (p) => ({ js:'(' + p.js + ')', tex:p.tex });
+    const matchBrace = (from) => {
+      let depth = 0;
+      for (let k = from; k < body.length; k++) {
+        if (body[k] === '\\') { k++; continue; }
+        if (body[k] === '{') depth++;
+        else if (body[k] === '}') { depth--; if (!depth) return k; }
+      }
+      return -1;
+    };
+
+    function registerVar(name, tex){
+      if (slots.has(name)) return slots.get(name);
+      const slot = vars.length;
+      slots.set(name, slot);
+      const known = FX_KNOWN_VARS[name] || FX_DEFAULT_VAR;
+      vars.push({ name:name, tex:tex, value:known.value, min:known.min, max:known.max, step:known.step });
+      return slot;
+    }
+
+    // True when the next character could begin another operand, which is how LaTeX writes
+    // multiplication without a sign (2\pi, 3x). '\%' is deliberately excluded — it is a postfix.
+    function startsAtom(){
+      const c = body[i];
+      if (c === undefined) return false;
+      if (/[0-9A-Za-z({]/.test(c)) return true;
+      if (c === '.') return /[0-9]/.test(body[i+1] || '');
+      if (c === '\\') return body.substr(i, 2) !== '\\%' && /\\[A-Za-z]+/.test(body.slice(i));
+      return false;
+    }
+
+    function parseExpr(){
+      let left = parseTerm();
+      for(;;){
+        ws();
+        const c = body[i];
+        if (c !== '+' && c !== '-') return left;
+        i++;
+        left = join(left, lit(c), group(parseTerm()));
+      }
+    }
+    function parseTerm(){
+      let left = parseUnary();
+      for(;;){
+        ws();
+        const c = body[i];
+        if (c === '*' || c === '/') { i++; left = join(left, lit(c), group(parseUnary())); continue; }
+        if (startsAtom()) { left = join(left, lit('*'), group(parseUnary())); continue; }
+        return left;
+      }
+    }
+    function parseUnary(){
+      ws();
+      const c = body[i];
+      if (c === '-') { i++; return join(lit('-'), group(parseUnary())); }
+      if (c === '+') { i++; return parseUnary(); }
+      return parsePower();
+    }
+    function parsePower(){
+      const base = parseAtom();
+      ws();
+      if (body[i] === '^') {
+        i++;
+        const exponent = parseUnary();
+        // '**', not '^': in JavaScript ^ is bitwise XOR, so (1.08)^5 would coerce to 1^5 = 4 and
+        // quietly return a quarter of the right answer instead of failing.
+        return { js:group(base).js + '**(' + exponent.js + ')', tex:base.tex + '^{' + exponent.tex + '}' };
+      }
+      if (body.substr(i, 2) === '\\%') {
+        i += 2;
+        return { js:'(' + base.js + ')/100', tex:base.tex + '\\%' };
+      }
+      return base;
+    }
+    function parseAtom(){
+      ws();
+      const c = body[i];
+      if (c === undefined) fail();
+      if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(body[i+1] || ''))) {
+        const m = /^[0-9]*\.?[0-9]+/.exec(body.slice(i));
+        if (!m) fail();
+        i += m[0].length;
+        return lit(m[0]);
+      }
+      if (c === '(') {
+        i++;
+        const inner = parseExpr();
+        ws();
+        if (body[i] !== ')') fail();
+        i++;
+        return { js:'(' + inner.js + ')', tex:'(' + inner.tex + ')' };
+      }
+      if (c === '{') {
+        const close = matchBrace(i);
+        if (close < 0) fail();
+        i++;
+        const inner = parseExpr();
+        ws();
+        if (body[i] !== '}') fail();
+        i++;
+        return { js:'(' + inner.js + ')', tex:inner.tex };
+      }
+      if (c === '\\') {
+        const fx = FX_FRACTION.exec(body.slice(i));
+        if (fx) {
+          i += fx[0].length;
+          ws();
+          if (body[i] !== '{') fail();
+          // parsePower, not parseAtom: in \frac{100}{(1.08)^5} the exponent belongs to the
+          // denominator. Stopping at parseAtom would leave a dangling '^5' for the *whole
+          // fraction's caller to consume, silently turning the result into (100/1.08)^5.
+          const num = parsePower();
+          ws();
+          if (body[i] !== '{') fail();
+          const den = parsePower();
+          return { js:'(' + num.js + ')/(' + den.js + ')', tex:'\\frac{' + num.tex + '}{' + den.tex + '}' };
+        }
+        const cmd = /^\\([A-Za-z]+)/.exec(body.slice(i));
+        if (!cmd) fail();
+        const name = cmd[1];
+        i += cmd[0].length;
+        ws();
+        if (name === 'sqrt') {
+          if (body[i] === '[') {
+            // An n-th root is not a square root. Falling through would answer \sqrt[3]{8} with
+            // 2.83 without complaint, so the index is read and only 2 is accepted.
+            const close = body.indexOf(']', i);
+            if (close < 0) fail();
+            const index = body.slice(i + 1, close).trim();
+            if (index !== '2') fail();
+            i = close + 1;
+            ws();
+          }
+          if (body[i] !== '{') fail();
+          const arg = parsePower();
+          return { js:'Math.sqrt(' + arg.js + ')', tex:'\\sqrt{' + arg.tex + '}' };
+        }
+        const fn = FX_FUNCTIONS[name];
+        if (!fn) fail();
+        // \pi is the one zero-argument function; everything else needs its argument list.
+        if (name === 'pi') return { js:fn, tex:'\\pi' };
+        if (body[i] !== '(') fail();
+        i++;
+        const arg = parseExpr();
+        ws();
+        if (body[i] !== ')') fail();
+        i++;
+        return { js:fn + '(' + arg.js + ')', tex:'\\' + name + '{' + arg.tex + '}' };
+      }
+      if (/[A-Za-z]/.test(c)) {
+        const m = /^[A-Za-z]+/.exec(body.slice(i));
+        i += m[0].length;
+        let name = m[0], tex = name;
+        if (body[i] === '_') {
+          i++;
+          ws();
+          let sub;
+          if (body[i] === '{') {
+            const close = matchBrace(i);
+            if (close < 0) fail();
+            sub = body.slice(i + 1, close).trim();
+            i = close + 1;
+          } else {
+            const sm = /^[A-Za-z0-9]/.exec(body.slice(i));
+            if (!sm) fail();
+            sub = sm[0];
+            i += sm[0].length;
+          }
+          // D_{N+1} would need a slider for N hidden inside a subscript, which this UI can't
+          // express — and a value that silently ignores N is worse than no card at all.
+          if (!/^[A-Za-z0-9]$/.test(sub)) fail();
+          name += '_' + sub;
+          tex += '_{' + sub + '}';
+        }
+        if (FX_FUNCTIONS[name] && body[i] === '(') {
+          i++;
+          const arg = parseExpr();
+          ws();
+          if (body[i] !== ')') fail();
+          i++;
+          return { js:FX_FUNCTIONS[name] + '(' + arg.js + ')', tex:'\\' + name + '{' + arg.tex + '}' };
+        }
+        const slot = registerVar(name, tex);
+        return { js:'v' + slot, tex:'⟦' + slot + '⟧' };
+      }
+      fail();
+    }
+
+    let expr;
+    try {
+      expr = parseExpr();
+      ws();
+      if (i < body.length) fail();
+    } catch (err) {
+      if (err === FX_ABORT) return null;
+      throw err;
+    }
+
+    // A formula with no symbols in it (2^{10}, \frac{1}{2}) still evaluates fine — it just gets a
+    // readout and no sliders. Only an actual parse failure is refused.
+    const fn = new Function(vars.map((_, k) => 'v' + k).join(','), '"use strict";return (' + expr.js + ');');
+    return { vars:vars, fn:fn, tex:expr.tex, lhs:lhs };
+  }
+
+  // Runs the compiled expression. Anything non-finite or absurdly large (a division by a slider at
+  // zero, say) comes back as NaN so the UI can show a dash rather than an overflowing number.
+  function fxEval(compiled, values){
+    if (!compiled) return NaN;
+    let out;
+    try { out = compiled.fn.apply(null, values); } catch (err) { return NaN; }
+    if (typeof out !== 'number' || !Number.isFinite(out)) return NaN;
+    return Math.abs(out) > 1e12 ? NaN : out;
+  }
+
+  function fxFormat(n){
+    if (!Number.isFinite(n)) return '—';
+    const magnitude = Math.abs(n);
+    if (magnitude !== 0 && (magnitude >= 1e9 || magnitude < 1e-4)) return n.toExponential(3);
+    return String(Number(n.toPrecision(6)));
+  }
+
+  /* ---- DOM side: chips in the thread, sheet on tap ---- */
+  function applyFormulaCards(root){
+    if (!root || typeof root.querySelectorAll !== 'function') return;
+    const displays = root.querySelectorAll('.katex-display');
+    if (!displays.length) return;
+    const sources = root.__fxDispTex || [];
+    displays.forEach((node, idx) => {
+      if (node.closest && node.closest('.fxcard')) return;
+      const card = document.createElement('span');
+      card.className = 'fxcard';
+      card.dataset.fxTex = sources[idx] || '';
+      node.parentNode.insertBefore(card, node);
+      const math = document.createElement('span');
+      math.className = 'fxcard-math';
+      card.appendChild(math);
+      const open = document.createElement('span');
+      open.className = 'fxcard-open';
+      open.setAttribute('aria-hidden', 'true');
+      open.textContent = '⛶';
+      card.appendChild(open);
+      math.appendChild(node);
+      const hit = document.createElement('button');
+      hit.type = 'button';
+      hit.className = 'fxcard-hit';
+      hit.setAttribute('aria-label', 'Explore this formula');
+      card.appendChild(hit);
+    });
+  }
+
+  function fxRenderMath(el, tex, display){
+    if (!el || !window.katex) return false;
+    try {
+      el.innerHTML = window.katex.renderToString(tex, { displayMode:!!display, throwOnError:false });
+      return true;
+    } catch (err) { return false; }
+  }
+
+  function closeFormulaSheet(){
+    const sheet = $('fxSheet'), body = $('fxSheetBody');
+    if (sheet) { sheet.classList.remove('show'); sheet.setAttribute('aria-hidden', 'true'); }
+    if (body) body.innerHTML = '';
+    document.body.classList.remove('fx-open');
+  }
+
+  // Re-opens the last card's sheet from its stored LaTeX. Kept separate from openFormulaSheet so
+  // the Reset button can rebuild the controls without re-reading the DOM.
+  let fxLastCard = null;
+  function openFormulaSheet(card){
+    fxLastCard = card && card.dataset ? card : null;
+    buildFormulaSheet();
+  }
+  function buildFormulaSheet(){
+    const sheet = $('fxSheet'), body = $('fxSheetBody');
+    if (!sheet || !body || !fxLastCard) return;
+    const src = fxLastCard.dataset.fxTex || '';
+    body.innerHTML = '';
+
+    const math = document.createElement('div');
+    math.className = 'fx-math';
+    body.appendChild(math);
+    if (!fxRenderMath(math, src, true)) math.textContent = src;
+
+    const compiled = fxCompile(src);
+    if (!compiled) {
+      const note = document.createElement('p');
+      note.className = 'fx-note';
+      note.textContent = 'Too involved to play with — this one has no adjustable inputs here.';
+      body.appendChild(note);
+      showFormulaSheet(sheet);
+      return;
+    }
+
+    const values = compiled.vars.map(v => v.value);
+    const eq = document.createElement('div');
+    eq.className = 'fx-eq';
+    const label = document.createElement('div');
+    label.className = 'fx-eq-label';
+    label.textContent = compiled.lhs || 'Result';
+    const readout = document.createElement('div');
+    readout.className = 'fx-eq-value';
+    const substituted = document.createElement('div');
+    substituted.className = 'fx-eq-sub';
+    eq.append(label, readout, substituted);
+    body.appendChild(eq);
+
+    const varsWrap = document.createElement('div');
+    varsWrap.className = 'fx-vars';
+    compiled.vars.forEach((v, k) => {
+      const row = document.createElement('div');
+      row.className = 'fx-var-row';
+      const name = document.createElement('span');
+      name.className = 'fx-var-name';
+      if (!fxRenderMath(name, v.tex, false)) name.textContent = v.name;
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.className = 'fx-var-slider';
+      slider.min = v.min; slider.max = v.max; slider.step = v.step; slider.value = v.value;
+      slider.setAttribute('aria-label', v.name);
+      const shown = document.createElement('span');
+      shown.className = 'fx-var-val';
+      shown.textContent = fxFormat(values[k]);
+      slider.addEventListener('input', () => {
+        const next = parseFloat(slider.value);
+        if (!Number.isFinite(next)) return;
+        values[k] = next;
+        shown.textContent = fxFormat(next);
+        refresh();
+      });
+      row.append(name, slider, shown);
+      varsWrap.appendChild(row);
+    });
+    body.appendChild(varsWrap);
+
+    function refresh(){
+      const out = fxEval(compiled, values);
+      readout.textContent = fxFormat(out);
+      readout.classList.toggle('invalid', !Number.isFinite(out));
+      const filled = compiled.tex.replace(/⟦(\d+)⟧/g, (_, k) => fxFormat(values[+k]));
+      const line = (compiled.lhs ? compiled.lhs + ' = ' : '') + filled
+        + (Number.isFinite(out) ? ' = ' + fxFormat(out) : '');
+      if (!fxRenderMath(substituted, line, true)) substituted.textContent = line;
+    }
+    refresh();
+
+    showFormulaSheet(sheet);
+  }
+
+  function showFormulaSheet(sheet){
+    sheet.classList.add('show');
+    sheet.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('fx-open');
+    dismissKeyboardOnTouch();
+  }
+
+  function initFormulaCards(){
+    const sheet = $('fxSheet'), body = $('fxSheetBody');
+    if (!sheet || !body) return;
+    const close = $('fxSheetClose');
+    if (close) close.addEventListener('click', closeFormulaSheet);
+    // Reset is just a rebuild: every control is seeded from FX_KNOWN_VARS when buildFormulaSheet
+    // runs, so re-running it from the stored LaTeX restores the defaults with no separate
+    // bookkeeping to keep in sync with the sliders.
+    const reset = $('fxReset');
+    if (reset) reset.addEventListener('click', () => buildFormulaSheet());
+    document.addEventListener('click', (e) => {
+      const hit = e.target.closest ? e.target.closest('.fxcard-hit') : null;
+      if (hit) {
+        e.preventDefault();
+        e.stopPropagation();
+        openFormulaSheet(hit.parentNode);
+        return;
+      }
+      if (sheet.classList.contains('show') && !sheet.contains(e.target)) closeFormulaSheet();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && sheet.classList.contains('show')) closeFormulaSheet();
+    });
+  }
+  // Guarded so this whole section can be lifted out and unit-tested as pure functions.
+  if (typeof document !== 'undefined') initFormulaCards();
+
+  function renderRichInto(el){
+    if (!el) return;
+    renderKatexIn(el);
+    renderMermaidIn(el);
+    renderSvgIn(el);
+    applyExpandableCards(el);
+    applyFormulaCards(el);
   }
 
   /* ---------------- simulated streaming reveal ---------------- */
@@ -2666,9 +3519,7 @@
       if (myGen !== streamGen) return; // superseded by a new send/switch — abandon this stream
       if (i >= chunks.length) {
         bubbleEl.innerHTML = renderMarkdown(fullText);
-        renderKatexIn(bubbleEl);
-        renderMermaidIn(bubbleEl);
-        renderSvgIn(bubbleEl);
+        renderRichInto(bubbleEl);
         if (onDone) onDone();
         return;
       }
@@ -2869,7 +3720,7 @@
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     if (role === 'user') bubble.textContent = text;
-    else { bubble.innerHTML = text ? renderMarkdown(text) : '<div class="typing"><span></span><span></span><span></span></div>'; renderKatexIn(bubble); renderMermaidIn(bubble); renderSvgIn(bubble); }
+    else { bubble.innerHTML = text ? renderMarkdown(text) : '<div class="typing"><span></span><span></span><span></span></div>'; renderRichInto(bubble); }
     wrap.appendChild(bubble);
     return wrap;
   }
@@ -4459,11 +5310,15 @@
     menuShortcutMode = !!active;
     if (els.menuDropdown) els.menuDropdown.classList.toggle('shortcut-mode', menuShortcutMode);
   }
+  let menuAnchor = null;
   function positionMenuDropdown(){
     if (!els.menuBtn || !els.menuDropdown) return;
-    const r = els.menuBtn.getBoundingClientRect();
+    const a = menuAnchor && menuAnchor.isConnected && menuAnchor.getBoundingClientRect().width ? menuAnchor : els.menuBtn;
+    const r = a.getBoundingClientRect();
+    const width = els.menuDropdown.offsetWidth || 190;
+    const left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - width - 8));
     els.menuDropdown.style.top = (r.bottom + 8) + 'px';
-    els.menuDropdown.style.left = r.left + 'px';
+    els.menuDropdown.style.left = left + 'px';
   }
   function openMenuDropdown(){
     if (!els.menuDropdown) return;
@@ -4478,6 +5333,7 @@
     setMenuShortcutMode(false);
     hideShortcutHints();
     els.menuDropdown.classList.remove('show');
+    menuAnchor = null;
     if (els.menuBtn) els.menuBtn.setAttribute('aria-expanded', 'false');
   }
   function toggleMenuDropdown(){
@@ -4488,6 +5344,7 @@
   document.addEventListener('click', (e) => {
     if (!els.menuDropdown || !els.menuDropdown.classList.contains('show')) return;
     if (els.menuDropdown.contains(e.target) || (els.menuBtn && els.menuBtn.contains(e.target))) return;
+    if (menuAnchor && menuAnchor.contains(e.target)) return;
     closeMenuDropdown();
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenuDropdown(); });
@@ -4504,6 +5361,64 @@
   const shareBtn = $('shareBtn'), moreBtn = $('moreBtn');
   if (shareBtn) shareBtn.addEventListener('click', () => showToast('Share coming soon'));
   if (moreBtn) moreBtn.addEventListener('click', () => showToast('No additional options yet'));
+
+  /* ---------------- phone floating controls ----------------
+     Same actions as the topbar, reachable from the floating buttons that replace it below 820px.
+     They drive the existing topbar controls/overlays rather than reimplementing them, so the two
+     layouts can never drift apart. */
+  const mMenuBtn = $('mMenuBtn'), mNewChatBtn = $('mNewChatBtn'), mMoreBtn = $('mMoreBtn'), mMoreMenu = $('mMoreMenu');
+  if (mMenuBtn) mMenuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (mMoreMenu && mMoreMenu.classList.contains('show')) closeMMoreMenu();
+    if (els.menuDropdown && els.menuDropdown.classList.contains('show')) { closeMenuDropdown(); return; }
+    menuAnchor = mMenuBtn;
+    openMenuDropdown();
+  });
+  if (mNewChatBtn) mNewChatBtn.addEventListener('click', () => { closeMMoreMenu(); if (els.newChatBtn) els.newChatBtn.click(); });
+
+  function positionMMoreMenu(){
+    if (!mMoreBtn || !mMoreMenu) return;
+    const r = mMoreBtn.getBoundingClientRect();
+    const width = mMoreMenu.offsetWidth || 200;
+    const left = Math.min(Math.max(8, r.right - width), Math.max(8, window.innerWidth - width - 8));
+    mMoreMenu.style.top = (r.bottom + 8) + 'px';
+    mMoreMenu.style.left = left + 'px';
+  }
+  function openMMoreMenu(){
+    if (!mMoreMenu) return;
+    if (els.menuDropdown && els.menuDropdown.classList.contains('show')) closeMenuDropdown();
+    positionMMoreMenu();
+    mMoreMenu.classList.add('show');
+    if (mMoreBtn) mMoreBtn.setAttribute('aria-expanded', 'true');
+  }
+  function closeMMoreMenu(){
+    if (!mMoreMenu) return;
+    mMoreMenu.classList.remove('show');
+    if (mMoreBtn) mMoreBtn.setAttribute('aria-expanded', 'false');
+  }
+  if (mMoreBtn) mMoreBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (mMoreMenu.classList.contains('show')) closeMMoreMenu(); else openMMoreMenu();
+  });
+  document.addEventListener('click', (e) => {
+    if (!mMoreMenu || !mMoreMenu.classList.contains('show')) return;
+    if (mMoreMenu.contains(e.target) || (mMoreBtn && mMoreBtn.contains(e.target))) return;
+    closeMMoreMenu();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMMoreMenu(); });
+  window.addEventListener('resize', () => { if (mMoreMenu && mMoreMenu.classList.contains('show')) positionMMoreMenu(); });
+  [
+    ['mModesBtn', () => openModesModal()],
+    ['mTopicsBtn', () => openTopicsModal()],
+    ['mNotesBtn', () => toggleNotesPanel()],
+    ['mSideBtn', () => toggleSidePanel()],
+    ['mSettingsBtn', () => { if (els.settingsBtn) els.settingsBtn.click(); }],
+    ['mMenuNewChatBtn', () => { if (els.newChatBtn) els.newChatBtn.click(); }]
+  ].forEach(([id, run]) => {
+    const btn = $(id);
+    if (!btn) { console.warn('[mobile-menu] button not found:', id); return; }
+    btn.addEventListener('click', (e) => { e.stopPropagation(); closeMMoreMenu(); run(); });
+  });
 
   function runMenuShortcut(key){
     const button = { n: els.newChatBtn, b: els.topicsBtn, s: els.settingsBtn }[key];
