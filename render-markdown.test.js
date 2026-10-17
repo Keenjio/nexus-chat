@@ -166,6 +166,16 @@ test('normalizes escaped currency dollars', () => {
   assert.doesNotMatch(out, /\\\$1\.74/);
 });
 
+test('escapes a currency dollar that lands inside a math span', () => {
+  // The DLR restore puts a bare '$' back, and KaTeX rejects a bare '$' in math mode — it falls
+  // back to rendering the whole formula as unstyled red source. It must come back escaped.
+  const out = render(String.raw`PV is $P_0 = \frac{2.08}{0.05} = \$41.60$ today`);
+  assert.ok(out.includes(String.raw`\(P_0 = \frac{2.08}{0.05} = \$41.60\)`));
+  // A dollar outside math must stay a bare, unescaped '$'.
+  assert.ok(render(String.raw`costs \$41.60`).includes('$41.60'));
+  assert.doesNotMatch(render(String.raw`costs \$41.60`), /\\\$41/);
+});
+
 test('keeps real math and escapes percent signs', () => {
   const out = render('Rate is $r > g$ and $r (4)%$.');
   assert.ok(out.includes(String.raw`\(r &gt; g\)`));
@@ -183,6 +193,14 @@ test('converts dollar math to explicit KaTeX delimiters', () => {
 test('keeps code fences literal', () => {
   const out = render('```python\nprice = $100\n```');
   assert.ok(out.includes('<pre><code>price = $100</code></pre>'));
+});
+
+test('leaves code containing math-looking text untouched', () => {
+  // The dollar-in-math fix must not reach inside a fenced block, which can legitimately hold
+  // both "\(" and a literal '$'.
+  const out = render('```\nx = \\(a$2\\)\n```');
+  assert.ok(out.includes('$2'), 'a fenced dollar must survive unescaped');
+  assert.ok(!out.includes('\\$2'), 'fenced code must not be rewritten');
 });
 
 test('renders bold and italic without leaking markers', () => {

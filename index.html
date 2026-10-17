@@ -2032,6 +2032,17 @@
     });
     s = s.replace(/\u0000DLR\u0000/g, () => '$');
 
+    // A currency amount written *inside* a math span — "$P_0 = \frac{2.08}{0.05} = \$41.60$" —
+    // comes back from the DLR restore above as a bare '$', and KaTeX refuses a bare '$' in math
+    // mode. It then renders the entire formula as unstyled red source, which is what a reader
+    // sees as "\frac{2.08}{0.05} = $41.60" in the middle of a sentence. Escaping it back to \$
+    // typesets an ordinary dollar sign and costs nothing when there is no '$' inside.
+    // The <pre> alternative is matched first purely so code blocks are passed through untouched:
+    // a fenced block can legitimately contain both "\(" and a '$', and rewriting the code the
+    // reader is looking at is worse than the red text this fixes.
+    s = s.replace(/(<pre[\s\S]*?<\/pre>)|(\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g,
+      (match, pre) => pre ? pre : match.replace(/\$/g, '\\$'));
+
     return s;
   }
 
@@ -2896,17 +2907,21 @@
   }
 
   /* ---------------- expandable cards ----------------
-     Everything an answer renders as a self-contained block — Mermaid/SVG figures, ASCII art,
-     tables, code — is wrapped so that on a phone it reads as a small tappable card and opens
-     full-screen, instead of forcing the reader to scroll past a wide diagram mid-paragraph.
-     Wrapping happens after the rich renderers have run, so the node that gets wrapped is the
-     finished element (an actual SVG, a real <table>), not a placeholder.
+     Diagrams, ASCII art and code blocks are wrapped so that on a phone they read as a small
+     tappable card and open full-screen, instead of forcing the reader to scroll past a wide
+     diagram mid-paragraph. Wrapping happens after the rich renderers have run, so the node that
+     gets wrapped is the finished element (an actual SVG), not a placeholder.
+
+     Tables are deliberately NOT wrapped. A phone preview is 134px tall at 46% scale, which suits
+     a figure but renders a three-column prose table as unreadable clipped slivers with the "Table"
+     tag sitting on top of the last row — and the whole point of the wrapper is to avoid scrolling
+     past something wide, which tables already solve themselves by wrapping their cells (the .table-scroll
+     wrapper still scrolls horizontally if a table really is too wide).
 
      The wrap is inert above 820px (see .xcard rules), so this is safe to run on every render. */
-  const XCARD_SELECTOR = '.mermaid-diagram, .svg-diagram, pre.ascii-art, .table-scroll, .bubble pre:not(.ascii-art)';
+  const XCARD_SELECTOR = '.mermaid-diagram, .svg-diagram, pre.ascii-art, .bubble pre:not(.ascii-art)';
   function xcardKindOf(el){
     if (el.classList.contains('mermaid-diagram') || el.classList.contains('svg-diagram') || el.classList.contains('ascii-art')) return 'Diagram';
-    if (el.classList.contains('table-scroll')) return 'Table';
     return 'Code';
   }
   function applyExpandableCards(root){
